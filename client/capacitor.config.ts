@@ -2,8 +2,8 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.example.chatapp',
-  appName: 'Chat App',
+  appId: 'com.fyzks.chatapp',
+  appName: 'ChatUp',
   webDir: 'build',
   // bundledWebRuntime: false,
   plugins: {

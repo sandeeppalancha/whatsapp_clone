@@ -1,6 +1,6 @@
 // client/src/App.js
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { Capacitor } from '@capacitor/core';
 import styled from 'styled-components';
@@ -40,7 +40,7 @@ const AppContainer = styled.div`
 const ContentContainer = styled.div`
   flex: 1;
   overflow: hidden;
-  padding-bottom: 60px; /* Make room for bottom nav */
+  padding-bottom: ${props => props.showBottomNav ? '60px' : '0'}; /* Adjust padding based on bottom nav visibility */
 `;
 
 // Protected route component
@@ -52,6 +52,29 @@ const ProtectedRoute = ({ children }) => {
   }
   
   return children;
+};
+
+// Navigation controller component
+const NavigationController = ({ children }) => {
+  const location = useLocation();
+  const { isAuthenticated } = useSelector(state => state.auth);
+  const { theme } = useSelector(state => state.ui);
+  
+  // Determine if we should show the bottom nav
+  // Hide it on chat and group pages
+  const isChat = location.pathname.startsWith('/chat/');
+  const isGroup = location.pathname.startsWith('/group/');
+  const showBottomNav = isAuthenticated && !isChat && !isGroup;
+  
+  return (
+    <>
+      <ContentContainer showBottomNav={showBottomNav}>
+        {children}
+      </ContentContainer>
+      
+      {showBottomNav && <BottomNav theme={theme} />}
+    </>
+  );
 };
 
 function App() {
@@ -90,7 +113,7 @@ function App() {
   return (
     <AppContainer theme={theme}>
       <Router>
-        <ContentContainer>
+        <NavigationController>
           <Routes>
             <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
             <Route path="/register" element={isAuthenticated ? <Navigate to="/" replace /> : <Register />} />
@@ -142,11 +165,7 @@ function App() {
             
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </ContentContainer>
-        
-        {isAuthenticated && (
-          <BottomNav theme={theme} />
-        )}
+        </NavigationController>
       </Router>
     </AppContainer>
   );

@@ -1,5 +1,5 @@
 // client/src/pages/Group.js
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import styled from 'styled-components';
@@ -29,46 +29,64 @@ const Group = () => {
   const { user } = useSelector(state => state.auth);
   const { messages, conversations, isLoading } = useSelector(state => state.chat);
   const [groupInfo, setGroupInfo] = useState(null);
+  const [hasMarkedAsRead, setHasMarkedAsRead] = useState(false);
   
   // Get message key for this group
   const messageKey = `group_${id}`;
   const conversationMessages = messages[messageKey] || [];
   
+  // Find group without creating infinite loop
   useEffect(() => {
-    // Find the group in conversations
-    const foundGroup = conversations.find(conv => conv.isGroup && conv.id.toString() === id);
-    if (foundGroup) {
-      setGroupInfo(foundGroup);
-    } else {
-      // Fetch group details if not found in conversations
-      const fetchGroupInfo = async () => {
+    const findGroup = async () => {
+      // Find the group in conversations
+      const foundGroup = conversations.find(conv => conv.isGroup && conv.id.toString() === id);
+      if (foundGroup) {
+        setGroupInfo(foundGroup);
+      } else {
+        // Fetch group details if not found in conversations
         try {
           const response = await chatService.getGroup(id);
           setGroupInfo(response.data);
         } catch (error) {
           console.error('Error fetching group info:', error);
         }
-      };
-      
-      fetchGroupInfo();
-    }
+      }
+    };
     
-    // Set active conversation
+    findGroup();
+  }, [id, conversations]);
+  
+  // Set active conversation and fetch messages
+  useEffect(() => {
     dispatch(setActiveConversation({
       id: parseInt(id),
       isGroup: true
     }));
     
-    // Fetch messages for this group
-    dispatch(fetchMessages({ conversationId: id, isGroup: true }));
+    dispatch(fetchMessages({ 
+      conversationId: id, 
+      isGroup: true 
+    }));
     
-    // Mark messages as read when entering the group
-    if (conversationMessages.length > 0) {
-      chatService.markGroupMessagesAsRead(id);
-    }
-  }, [dispatch, id, conversations, conversationMessages.length]);
+    // Reset read status flag when group changes
+    setHasMarkedAsRead(false);
+  }, [dispatch, id]);
   
-  const handleSendMessage = (message, attachments = []) => {
+  // Handle marking messages as read - separate effect to prevent infinite loop
+  useEffect(() => {
+    // Only run if we have messages and haven't marked them as read yet
+    if (conversationMessages.length > 0 && !hasMarkedAsRead) {
+      // Mark messages as read
+      try {
+        chatService.markGroupMessagesAsRead(id);
+        setHasMarkedAsRead(true);
+      } catch (error) {
+        console.error('Error marking messages as read:', error);
+      }
+    }
+  }, [id, conversationMessages, hasMarkedAsRead]);
+  
+  const handleSendMessage = useCallback((message, attachments = []) => {
     // Send message through socket
     const messageId = sendGroupMessage(id, message, attachments);
     
@@ -85,12 +103,12 @@ const Group = () => {
         status: 'sending'
       }
     }));
-  };
+  }, [dispatch, id, user?.id]);
   
-  const handleTyping = () => {
+  const handleTyping = useCallback(() => {
     // Send typing indicator
     sendTypingIndicator(id, true);
-  };
+  }, [id]);
   
   return (
     <GroupContainer>

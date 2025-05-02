@@ -107,6 +107,31 @@ const getBlockedUsers = () => {
   return apiClient.get('/users/blocked');
 };
 
+// Get group details
+const getGroup = (groupId) => {
+  return apiClient.get(`/groups/${groupId}`);
+};
+
+// Add member to group
+const addGroupMember = (groupId, userId) => {
+  return apiClient.post(`/groups/${groupId}/members`, { userId });
+};
+
+// Remove member from group
+const removeGroupMember = (groupId, userId) => {
+  return apiClient.delete(`/groups/${groupId}/members/${userId}`);
+};
+
+// Leave group
+const leaveGroup = (groupId) => {
+  return apiClient.delete(`/groups/${groupId}/members/me`);
+};
+
+// Delete group (admin only)
+const deleteGroup = (groupId) => {
+  return apiClient.delete(`/groups/${groupId}`);
+};
+
 export default {
   // Existing methods
   getContacts,
@@ -133,5 +158,12 @@ export default {
   reportMessage,
   blockUser,
   unblockUser,
-  getBlockedUsers
+  getBlockedUsers,
+  createGroup,
+  getGroup,
+  updateGroup,
+  addGroupMember,
+  removeGroupMember,
+  leaveGroup,
+  deleteGroup
 };

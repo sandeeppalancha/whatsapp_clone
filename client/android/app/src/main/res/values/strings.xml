@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ChatUp</string>
+    <string name="title_activity_main">ChatUp</string>
+    <string name="package_name">com.fyzks.chatapp</string>
+    <string name="custom_url_scheme">com.fyzks.chatapp</string>
+</resources>

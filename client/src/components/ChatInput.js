@@ -1,14 +1,9 @@
-// client/src/components/ChatInput.js
-import React, { useState, useRef } from 'react';
+// client/src/components/ChatInput.js - Improved version
+import React, { useState, useRef, useCallback } from 'react';
 import styled from 'styled-components';
 import { useSelector } from 'react-redux';
 import { Camera, Mic, Send, Paperclip, Smile } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
-import { Camera as CapacitorCamera } from '@capacitor/camera';
-import { Filesystem } from '@capacitor/filesystem';
-
-// Import services
-import chatService from '../services/chatService';
 
 const InputContainer = styled.div`
   padding: 15px;
@@ -97,178 +92,98 @@ const ChatInput = ({ onSendMessage, onTyping }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [attachments, setAttachments] = useState([]);
   const isNative = Capacitor.isNativePlatform();
-
-  const fileInput = useRef(null);
+  
+  const fileInputRef = useRef(null);
   
   // Handle message change
-  const handleMessageChange = (e) => {
+  const handleMessageChange = useCallback((e) => {
     setMessage(e.target.value);
-    onTyping();
-  };
+    if (onTyping) onTyping();
+  }, [onTyping]);
   
   // Handle send message
-  const handleSendMessage = () => {
+  const handleSendMessage = useCallback(() => {
     if (message.trim() || attachments.length > 0) {
-      onSendMessage(message, attachments);
+      if (onSendMessage) onSendMessage(message, attachments);
       setMessage('');
       setAttachments([]);
     }
-  };
+  }, [message, attachments, onSendMessage]);
   
   // Handle key press (send on Enter)
-  const handleKeyPress = (e) => {
+  const handleKeyPress = useCallback((e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
-  };
+  }, [handleSendMessage]);
   
-  // Handle file selection
-  const handleFileSelect = async (e) => {
-    if (isNative) {
-      // Using Capacitor Camera API for native platforms
-      try {
-        const image = await CapacitorCamera.getPhoto({
-          quality: 90,
-          allowEditing: false,
-          resultType: 'uri'
+  // Handle attachment selection
+  const handleFileSelect = useCallback((e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    const newAttachments = [...attachments];
+    
+    // Process each selected file
+    Array.from(files).forEach((file, index) => {
+      const reader = new FileReader();
+      
+      reader.onload = (event) => {
+        const preview = file.type.startsWith('image/') ? event.target.result : null;
+        
+        newAttachments.push({
+          id: Date.now() + index,
+          file,
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+          preview
         });
         
-        // Convert to base64 for preview
-        const base64Data = await Filesystem.readFile({
-          path: image.path
-        });
-        
-        // Create a file object for upload
-        const fileName = `image_${Date.now()}.${image.format}`;
-        const newFile = {
-          id: Date.now().toString(),
-          file: base64Data.data,
-          fileName,
-          fileType: `image/${image.format}`,
-          preview: `data:image/${image.format};base64,${base64Data.data}`
-        };
-        
-        setAttachments([...attachments, newFile]);
-      } catch (error) {
-        console.error('Error selecting image:', error);
-      }
-    } else {
-      // Web file input
-      const files = e.target.files;
-      if (!files || files.length === 0) return;
-      
-      const newAttachments = [...attachments];
-      
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const reader = new FileReader();
-        
-        reader.onload = (e) => {
-          newAttachments.push({
-            id: Date.now() + i,
-            file,
-            fileName: file.name,
-            fileType: file.type,
-            fileSize: file.size,
-            preview: file.type.startsWith('image/') ? e.target.result : null
-          });
-          
-          if (i === files.length - 1) {
-            setAttachments(newAttachments);
-          }
-        };
-        
-        if (file.type.startsWith('image/')) {
-          reader.readAsDataURL(file);
-        } else {
-          reader.readAsArrayBuffer(file);
-          newAttachments.push({
-            id: Date.now() + i,
-            file,
-            fileName: file.name,
-            fileType: file.type,
-            fileSize: file.size,
-            preview: null
-          });
+        // Update state after all files are processed
+        if (index === files.length - 1) {
+          setAttachments(newAttachments);
         }
+      };
+      
+      if (file.type.startsWith('image/')) {
+        reader.readAsDataURL(file);
+      } else {
+        reader.readAsArrayBuffer(file);
       }
-    }
-  };
-  
-  // Handle attachment upload
-  const handleAttachmentUpload = async () => {
-    if (attachments.length === 0) return;
+    });
     
-    setIsUploading(true);
-    
-    try {
-      const uploadPromises = attachments.map(attachment => {
-        return chatService.uploadAttachment(attachment.file, (progressEvent) => {
-          const progress = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total
-          );
-          console.log(`Upload progress: ${progress}%`);
-        });
-      });
-      
-      const results = await Promise.all(uploadPromises);
-      
-      // Process uploaded attachments
-      const uploadedAttachments = results.map((result, index) => ({
-        ...attachments[index],
-        filePath: result.data.filePath
-      }));
-      
-      setAttachments(uploadedAttachments);
-      setIsUploading(false);
-    } catch (error) {
-      console.error('Error uploading attachments:', error);
-      setIsUploading(false);
-    }
-  };
+    // Clear the input to allow selecting the same file again
+    e.target.value = null;
+  }, [attachments]);
   
   // Handle remove attachment
-  const handleRemoveAttachment = (id) => {
-    setAttachments(attachments.filter(attachment => attachment.id !== id));
-  };
-  
-  // Handle camera click
-  const handleCameraClick = async () => {
-    if (isNative) {
-      try {
-        const image = await CapacitorCamera.getPhoto({
-          quality: 90,
-          allowEditing: false,
-          resultType: 'uri'
-        });
-        
-        // Process the image similar to handleFileSelect
-        // ...
-      } catch (error) {
-        console.error('Error taking photo:', error);
-      }
-    } else {
-      // Trigger file input for web
-      fileInput.current.click();
-    }
-  };
+  const handleRemoveAttachment = useCallback((id) => {
+    setAttachments(prev => prev.filter(attachment => attachment.id !== id));
+  }, []);
   
   return (
     <InputContainer theme={theme}>
       <input
         type="file"
-        ref={fileInput}
+        ref={fileInputRef}
         style={{ display: 'none' }}
         onChange={handleFileSelect}
         multiple
       />
       
-      <IconButton onClick={() => fileInput.current.click()} theme={theme}>
+      <IconButton 
+        onClick={() => fileInputRef.current.click()} 
+        theme={theme}
+      >
         <Paperclip size={24} />
       </IconButton>
       
-      <IconButton onClick={handleCameraClick} theme={theme}>
+      <IconButton 
+        onClick={() => fileInputRef.current.click()} 
+        theme={theme}
+      >
         <Camera size={24} />
       </IconButton>
       
@@ -290,7 +205,7 @@ const ChatInput = ({ onSendMessage, onTyping }) => {
             </div>
           )}
           <RemoveButton onClick={() => handleRemoveAttachment(attachment.id)}>
-            &times;
+            ×
           </RemoveButton>
         </AttachmentPreview>
       ))}

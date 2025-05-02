@@ -83,27 +83,37 @@ const chatSlice = createSlice({
       const { conversationId, isGroup, message } = action.payload;
       const key = `${isGroup ? 'group' : 'user'}_${conversationId}`;
       
+      // Ensure the message has a unique ID
+      const messageWithId = {
+        ...message,
+        clientMessageId: message.clientMessageId || Math.random().toString(36).substr(2, 9)
+      };
+      
+      // Initialize messages array if it doesn't exist
       if (!state.messages[key]) {
         state.messages[key] = [];
       }
       
-      // Check if message already exists
-      const existingMessageIndex = state.messages[key].findIndex(
-        msg => msg.id === message.id || msg.clientMessageId === message.clientMessageId
+      // Check if a message with this ID already exists
+      const existingIndex = state.messages[key].findIndex(
+        msg => (msg.id && msg.id === message.id) || 
+               (msg.clientMessageId && msg.clientMessageId === message.clientMessageId)
       );
       
-      if (existingMessageIndex !== -1) {
+      if (existingIndex !== -1) {
         // Update existing message
-        state.messages[key][existingMessageIndex] = {
-          ...state.messages[key][existingMessageIndex],
-          ...message,
-          id: message.id || state.messages[key][existingMessageIndex].id
+        state.messages[key][existingIndex] = {
+          ...state.messages[key][existingIndex],
+          ...messageWithId,
+          // Keep the original ID if it exists
+          id: message.id || state.messages[key][existingIndex].id
         };
       } else {
-        // Add new message
+        // Add new message - make sure it has a timestamp
+        const ensuredTimestamp = messageWithId.timestamp || new Date().toISOString();
         state.messages[key].push({
-          ...message,
-          clientMessageId: message.clientMessageId || message.id
+          ...messageWithId,
+          timestamp: ensuredTimestamp
         });
       }
       
@@ -116,7 +126,7 @@ const chatSlice = createSlice({
         state.conversations[conversationIndex].lastMessage = {
           content: message.content,
           senderId: message.senderId,
-          timestamp: message.timestamp,
+          timestamp: message.timestamp || new Date().toISOString(),
           attachments: message.attachments
         };
         

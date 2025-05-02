@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+// client/src/components/MessageList.js - Complete fixed version
+import React, { useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { useSelector } from 'react-redux';
 
@@ -7,6 +8,8 @@ const ListContainer = styled.div`
   padding: 20px;
   overflow-y: auto;
   background-color: ${props => props.theme === 'dark' ? '#121212' : '#f5f5f5'};
+  display: flex;
+  flex-direction: column;
 `;
 
 const MessageGroup = styled.div`
@@ -22,10 +25,12 @@ const MessageDate = styled.div`
 
 const MessageBubble = styled.div`
   max-width: 70%;
-  padding: 10px 15px;
+  padding: 12px 15px;
   border-radius: 18px;
-  margin-bottom: 5px;
+  margin-bottom: 10px;
   position: relative;
+  word-wrap: break-word;
+  padding-bottom: 25px; /* Make room for timestamp */
   
   ${props => props.isSent ? `
     background-color: ${props.theme === 'dark' ? '#2a5885' : '#e3f2fd'};
@@ -40,13 +45,23 @@ const MessageBubble = styled.div`
   `}
 `;
 
-const MessageTime = styled.span`
+const SenderName = styled.div`
+  font-size: 0.8em;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #4caf50;
+`;
+
+const MessageContent = styled.div`
+  margin-right: 35px; /* Space for timestamp */
+`;
+
+const MessageTime = styled.div`
   font-size: 0.7em;
   color: ${props => props.theme === 'dark' ? '#ccc' : '#999'};
   position: absolute;
   bottom: 5px;
   right: 10px;
-  margin-left: 10px;
 `;
 
 const MessageStatus = styled.span`
@@ -119,24 +134,45 @@ const NoMessages = styled.div`
   padding: 20px;
 `;
 
-const MessageList = ({ messages, currentUserId, isLoading }) => {
+const MessageList = ({ messages, currentUserId, isLoading, isGroup }) => {
   const { theme } = useSelector(state => state.ui);
   const messagesEndRef = useRef(null);
+  const [processedMessages, setProcessedMessages] = useState([]);
+  
+  // Process and sort messages when the messages prop changes
+  useEffect(() => {
+    if (!messages || messages.length === 0) {
+      setProcessedMessages([]);
+      return;
+    }
+    
+    // Clone and sort messages by timestamp
+    const sorted = [...messages].sort((a, b) => {
+      const timeA = new Date(a.timestamp || a.createdAt || 0).getTime();
+      const timeB = new Date(b.timestamp || b.createdAt || 0).getTime();
+      return timeA - timeB; // Ascending order (oldest first, newest last)
+    });
+    
+    setProcessedMessages(sorted);
+  }, [messages]);
   
   // Scroll to bottom on new messages
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages]);
+  }, [processedMessages]);
   
   // Format timestamp
   const formatTime = (timestamp) => {
+    if (!timestamp) return '';
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
   
   // Format date
   const formatDate = (timestamp) => {
+    if (!timestamp) return 'Unknown Date';
+    
     const date = new Date(timestamp);
     const now = new Date();
     
@@ -160,8 +196,11 @@ const MessageList = ({ messages, currentUserId, isLoading }) => {
   const groupMessagesByDate = () => {
     const groups = {};
     
-    messages.forEach(message => {
-      const date = new Date(message.timestamp || message.createdAt).toDateString();
+    processedMessages.forEach(message => {
+      const timestamp = message.timestamp || message.createdAt;
+      if (!timestamp) return; // Skip messages without timestamp
+      
+      const date = new Date(timestamp).toDateString();
       
       if (!groups[date]) {
         groups[date] = [];
@@ -178,7 +217,9 @@ const MessageList = ({ messages, currentUserId, isLoading }) => {
   
   // Render attachment preview
   const renderAttachment = (attachment) => {
-    const isImage = /\.(jpeg|jpg|gif|png)$/i.test(attachment.fileName);
+    if (!attachment) return null;
+    
+    const isImage = attachment.fileName && /\.(jpeg|jpg|gif|png)$/i.test(attachment.fileName);
     
     if (isImage) {
       return (
@@ -204,7 +245,7 @@ const MessageList = ({ messages, currentUserId, isLoading }) => {
             <DocumentInfo>
               <DocumentName theme={theme}>{attachment.fileName}</DocumentName>
               <DocumentSize theme={theme}>
-                {Math.round(attachment.fileSize / 1024)} KB
+                {Math.round((attachment.fileSize || 0) / 1024)} KB
               </DocumentSize>
             </DocumentInfo>
           </Document>
@@ -233,7 +274,7 @@ const MessageList = ({ messages, currentUserId, isLoading }) => {
     return <LoadingIndicator theme={theme}>Loading messages...</LoadingIndicator>;
   }
   
-  if (!messages || messages.length === 0) {
+  if (!processedMessages || processedMessages.length === 0) {
     return <NoMessages theme={theme}>No messages yet. Start the conversation!</NoMessages>;
   }
   
@@ -247,18 +288,22 @@ const MessageList = ({ messages, currentUserId, isLoading }) => {
           
           {group.messages.map(message => {
             const isSent = message.senderId === currentUserId;
+            const messageId = message.id || message.clientMessageId || Math.random().toString(36).substr(2, 9);
             
             return (
               <MessageBubble 
-                key={message.id}
+                key={messageId}
                 isSent={isSent}
                 theme={theme}
               >
-                {message.content}
-                
-                {message.attachments && message.attachments.map(attachment => 
-                  renderAttachment(attachment)
+                {isGroup && !isSent && message.sender && (
+                  <SenderName>{message.sender.username}</SenderName>
                 )}
+                
+                <MessageContent>{message.content}</MessageContent>
+                
+                {message.attachments && Array.isArray(message.attachments) && 
+                  message.attachments.map(attachment => renderAttachment(attachment))}
                 
                 <MessageTime theme={theme}>
                   {formatTime(message.timestamp || message.createdAt)}
