@@ -4,23 +4,15 @@ import { useDispatch, useSelector } from 'react-redux';
 import styled from 'styled-components';
 import { Moon, Sun, Bell, BellOff, Lock, LogOut, Trash2 } from 'lucide-react';
 
-// Import components
-import Sidebar from '../components/Sidebar';
-
 // Import Redux actions
 import { setTheme } from '../redux/slices/uiSlice';
 import { logout } from '../redux/slices/authSlice';
 
 const SettingsContainer = styled.div`
   display: flex;
+  flex-direction: column;
   height: 100%;
   width: 100%;
-`;
-
-const ContentContainer = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
   padding: 20px;
   background-color: ${props => props.theme === 'dark' ? '#121212' : '#f5f5f5'};
   color: ${props => props.theme === 'dark' ? '#f5f5f5' : '#333'};
@@ -282,170 +274,166 @@ const Settings = () => {
   };
   
   return (
-    <SettingsContainer>
-      <Sidebar />
+    <SettingsContainer theme={theme}>
+      <SettingsHeader>
+        <Title theme={theme}>Settings</Title>
+      </SettingsHeader>
       
-      <ContentContainer theme={theme}>
-        <SettingsHeader>
-          <Title theme={theme}>Settings</Title>
-        </SettingsHeader>
+      <SettingsContent>
+        <SettingsSection theme={theme}>
+          <SectionTitle theme={theme}>
+            {theme === 'dark' ? <Moon size={22} /> : <Sun size={22} />}
+            Appearance
+          </SectionTitle>
+          
+          <SettingItem theme={theme}>
+            <div>
+              <SettingLabel theme={theme}>Dark Theme</SettingLabel>
+              <SettingDescription theme={theme}>
+                Switch between light and dark themes
+              </SettingDescription>
+            </div>
+            <Switch>
+              <SwitchInput 
+                type="checkbox"
+                checked={theme === 'dark'}
+                onChange={handleThemeToggle}
+              />
+              <SwitchSlider theme={theme} />
+            </Switch>
+          </SettingItem>
+        </SettingsSection>
         
-        <SettingsContent>
-          <SettingsSection theme={theme}>
-            <SectionTitle theme={theme}>
-              {theme === 'dark' ? <Moon size={22} /> : <Sun size={22} />}
-              Appearance
-            </SectionTitle>
-            
-            <SettingItem theme={theme}>
-              <div>
-                <SettingLabel theme={theme}>Dark Theme</SettingLabel>
-                <SettingDescription theme={theme}>
-                  Switch between light and dark themes
-                </SettingDescription>
-              </div>
-              <Switch>
-                <SwitchInput 
-                  type="checkbox"
-                  checked={theme === 'dark'}
-                  onChange={handleThemeToggle}
-                />
-                <SwitchSlider theme={theme} />
-              </Switch>
-            </SettingItem>
-          </SettingsSection>
+        <SettingsSection theme={theme}>
+          <SectionTitle theme={theme}>
+            <Bell size={22} />
+            Notifications
+          </SectionTitle>
           
-          <SettingsSection theme={theme}>
-            <SectionTitle theme={theme}>
-              <Bell size={22} />
-              Notifications
-            </SectionTitle>
-            
-            <SettingItem theme={theme}>
-              <div>
-                <SettingLabel theme={theme}>Enable Notifications</SettingLabel>
-                <SettingDescription theme={theme}>
-                  Receive notifications for new messages
-                </SettingDescription>
-              </div>
-              <Switch>
-                <SwitchInput 
-                  type="checkbox"
-                  checked={notifications}
-                  onChange={handleNotificationsToggle}
-                />
-                <SwitchSlider theme={theme} />
-              </Switch>
-            </SettingItem>
-            
-            <SettingItem theme={theme}>
-              <div>
-                <SettingLabel theme={theme}>Sound</SettingLabel>
-                <SettingDescription theme={theme}>
-                  Play sounds for incoming messages
-                </SettingDescription>
-              </div>
-              <Switch>
-                <SwitchInput 
-                  type="checkbox"
-                  checked={soundEnabled}
-                  onChange={handleSoundToggle}
-                />
-                <SwitchSlider theme={theme} />
-              </Switch>
-            </SettingItem>
-          </SettingsSection>
+          <SettingItem theme={theme}>
+            <div>
+              <SettingLabel theme={theme}>Enable Notifications</SettingLabel>
+              <SettingDescription theme={theme}>
+                Receive notifications for new messages
+              </SettingDescription>
+            </div>
+            <Switch>
+              <SwitchInput 
+                type="checkbox"
+                checked={notifications}
+                onChange={handleNotificationsToggle}
+              />
+              <SwitchSlider theme={theme} />
+            </Switch>
+          </SettingItem>
           
-          <SettingsSection theme={theme}>
-            <SectionTitle theme={theme}>
-              <Lock size={22} />
-              Privacy and Security
-            </SectionTitle>
-            
-            <SettingItem theme={theme}>
-              <div>
-                <SettingLabel theme={theme}>Two-Factor Authentication</SettingLabel>
-                <SettingDescription theme={theme}>
-                  Add an extra layer of security to your account
-                </SettingDescription>
-              </div>
-              <Button secondary theme={theme}>
-                Set up
-              </Button>
-            </SettingItem>
-            
-            <SettingItem theme={theme}>
-              <div>
-                <SettingLabel theme={theme}>Blocked Users</SettingLabel>
-                <SettingDescription theme={theme}>
-                  Manage users you've blocked
-                </SettingDescription>
-              </div>
-              <Button secondary theme={theme}>
-                Manage
-              </Button>
-            </SettingItem>
-          </SettingsSection>
-          
-          <SettingsSection theme={theme}>
-            <SectionTitle theme={theme}>
-              <LogOut size={22} />
-              Account
-            </SectionTitle>
-            
-            <SettingItem theme={theme}>
-              <div>
-                <SettingLabel theme={theme}>Log Out</SettingLabel>
-                <SettingDescription theme={theme}>
-                  Sign out from your account
-                </SettingDescription>
-              </div>
-              <Button secondary theme={theme} onClick={handleLogout}>
-                <LogOut size={18} />
-                Log Out
-              </Button>
-            </SettingItem>
-            
-            <SettingItem theme={theme}>
-              <div>
-                <SettingLabel theme={theme}>Delete Account</SettingLabel>
-                <SettingDescription theme={theme}>
-                  Permanently delete your account and all your data
-                </SettingDescription>
-              </div>
-              <Button danger onClick={handleDeleteAccount}>
-                <Trash2 size={18} />
-                Delete
-              </Button>
-            </SettingItem>
-          </SettingsSection>
-        </SettingsContent>
+          <SettingItem theme={theme}>
+            <div>
+              <SettingLabel theme={theme}>Sound</SettingLabel>
+              <SettingDescription theme={theme}>
+                Play sounds for incoming messages
+              </SettingDescription>
+            </div>
+            <Switch>
+              <SwitchInput 
+                type="checkbox"
+                checked={soundEnabled}
+                onChange={handleSoundToggle}
+              />
+              <SwitchSlider theme={theme} />
+            </Switch>
+          </SettingItem>
+        </SettingsSection>
         
-        {confirmDialog.isOpen && (
-          <DialogOverlay>
-            <DialogContent theme={theme}>
-              <DialogTitle theme={theme}>{confirmDialog.title}</DialogTitle>
-              <DialogText theme={theme}>{confirmDialog.message}</DialogText>
-              <DialogButtons>
-                <Button 
-                  secondary 
-                  theme={theme} 
-                  onClick={handleCloseDialog}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  danger={confirmDialog.type === 'delete'}
-                  primary={confirmDialog.type === 'logout'}
-                  onClick={handleConfirmDialogAction}
-                >
-                  Confirm
-                </Button>
-              </DialogButtons>
-            </DialogContent>
-          </DialogOverlay>
-        )}
-      </ContentContainer>
+        <SettingsSection theme={theme}>
+          <SectionTitle theme={theme}>
+            <Lock size={22} />
+            Privacy and Security
+          </SectionTitle>
+          
+          <SettingItem theme={theme}>
+            <div>
+              <SettingLabel theme={theme}>Two-Factor Authentication</SettingLabel>
+              <SettingDescription theme={theme}>
+                Add an extra layer of security to your account
+              </SettingDescription>
+            </div>
+            <Button secondary theme={theme}>
+              Set up
+            </Button>
+          </SettingItem>
+          
+          <SettingItem theme={theme}>
+            <div>
+              <SettingLabel theme={theme}>Blocked Users</SettingLabel>
+              <SettingDescription theme={theme}>
+                Manage users you've blocked
+              </SettingDescription>
+            </div>
+            <Button secondary theme={theme}>
+              Manage
+            </Button>
+          </SettingItem>
+        </SettingsSection>
+        
+        <SettingsSection theme={theme}>
+          <SectionTitle theme={theme}>
+            <LogOut size={22} />
+            Account
+          </SectionTitle>
+          
+          <SettingItem theme={theme}>
+            <div>
+              <SettingLabel theme={theme}>Log Out</SettingLabel>
+              <SettingDescription theme={theme}>
+                Sign out from your account
+              </SettingDescription>
+            </div>
+            <Button secondary theme={theme} onClick={handleLogout}>
+              <LogOut size={18} />
+              Log Out
+            </Button>
+          </SettingItem>
+          
+          <SettingItem theme={theme}>
+            <div>
+              <SettingLabel theme={theme}>Delete Account</SettingLabel>
+              <SettingDescription theme={theme}>
+                Permanently delete your account and all your data
+              </SettingDescription>
+            </div>
+            <Button danger onClick={handleDeleteAccount}>
+              <Trash2 size={18} />
+              Delete
+            </Button>
+          </SettingItem>
+        </SettingsSection>
+      </SettingsContent>
+      
+      {confirmDialog.isOpen && (
+        <DialogOverlay>
+          <DialogContent theme={theme}>
+            <DialogTitle theme={theme}>{confirmDialog.title}</DialogTitle>
+            <DialogText theme={theme}>{confirmDialog.message}</DialogText>
+            <DialogButtons>
+              <Button 
+                secondary 
+                theme={theme} 
+                onClick={handleCloseDialog}
+              >
+                Cancel
+              </Button>
+              <Button 
+                danger={confirmDialog.type === 'delete'}
+                primary={confirmDialog.type === 'logout'}
+                onClick={handleConfirmDialogAction}
+              >
+                Confirm
+              </Button>
+            </DialogButtons>
+          </DialogContent>
+        </DialogOverlay>
+      )}
     </SettingsContainer>
   );
 };

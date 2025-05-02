@@ -4,22 +4,14 @@ import { useDispatch, useSelector } from 'react-redux';
 import styled from 'styled-components';
 import { Camera, Edit2, Save, X } from 'lucide-react';
 
-// Import components
-import Sidebar from '../components/Sidebar';
-
 // Import services
 import userService from '../services/userService';
 
 const ProfileContainer = styled.div`
   display: flex;
+  flex-direction: column;
   height: 100%;
   width: 100%;
-`;
-
-const ContentContainer = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
   padding: 20px;
   background-color: ${props => props.theme === 'dark' ? '#121212' : '#f5f5f5'};
   color: ${props => props.theme === 'dark' ? '#f5f5f5' : '#333'};
@@ -299,97 +291,93 @@ const Profile = () => {
   };
   
   return (
-    <ProfileContainer>
-      <Sidebar />
+    <ProfileContainer theme={theme}>
+      <ProfileHeader>
+        <Title theme={theme}>My Profile</Title>
+      </ProfileHeader>
       
-      <ContentContainer theme={theme}>
-        <ProfileHeader>
-          <Title theme={theme}>My Profile</Title>
-        </ProfileHeader>
+      <ProfileCard theme={theme}>
+        <AvatarSection>
+          <Avatar theme={theme}>
+            {user?.profilePicture ? (
+              <AvatarImage src={user.profilePicture} alt="Profile" />
+            ) : (
+              <span style={{ fontSize: '64px' }}>{user?.username?.[0]?.toUpperCase() || 'U'}</span>
+            )}
+            <AvatarUploadButton onClick={handleAvatarClick}>
+              <Camera size={18} />
+            </AvatarUploadButton>
+            <input
+              type="file"
+              ref={fileInputRef}
+              style={{ display: 'none' }}
+              accept="image/*"
+              onChange={handleFileChange}
+            />
+          </Avatar>
+        </AvatarSection>
         
-        <ProfileCard theme={theme}>
-          <AvatarSection>
-            <Avatar theme={theme}>
-              {user?.profilePicture ? (
-                <AvatarImage src={user.profilePicture} alt="Profile" />
-              ) : (
-                <span style={{ fontSize: '64px' }}>{user?.username?.[0]?.toUpperCase() || 'U'}</span>
-              )}
-              <AvatarUploadButton onClick={handleAvatarClick}>
-                <Camera size={18} />
-              </AvatarUploadButton>
-              <input
-                type="file"
-                ref={fileInputRef}
-                style={{ display: 'none' }}
-                accept="image/*"
-                onChange={handleFileChange}
-              />
-            </Avatar>
-          </AvatarSection>
+        <ProfileForm onSubmit={handleSubmit}>
+          <FormGroup>
+            <Label theme={theme}>Username</Label>
+            <Input
+              type="text"
+              name="username"
+              value={formData.username}
+              onChange={handleChange}
+              disabled={!isEditing}
+              theme={theme}
+            />
+          </FormGroup>
           
-          <ProfileForm onSubmit={handleSubmit}>
-            <FormGroup>
-              <Label theme={theme}>Username</Label>
-              <Input
-                type="text"
-                name="username"
-                value={formData.username}
-                onChange={handleChange}
-                disabled={!isEditing}
-                theme={theme}
-              />
-            </FormGroup>
-            
-            <FormGroup>
-              <Label theme={theme}>Status</Label>
-              <TextArea
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
-                disabled={!isEditing}
-                theme={theme}
-              />
-            </FormGroup>
-            
-            <ButtonGroup>
-              {isEditing ? (
-                <>
-                  <Button 
-                    type="button" 
-                    secondary 
-                    onClick={handleCancel}
-                    theme={theme}
-                  >
-                    <X size={18} />
-                    Cancel
-                  </Button>
-                  <Button 
-                    type="submit" 
-                    primary 
-                    disabled={isLoading}
-                  >
-                    <Save size={18} />
-                    {isLoading ? 'Saving...' : 'Save'}
-                  </Button>
-                </>
-              ) : (
+          <FormGroup>
+            <Label theme={theme}>Status</Label>
+            <TextArea
+              name="status"
+              value={formData.status}
+              onChange={handleChange}
+              disabled={!isEditing}
+              theme={theme}
+            />
+          </FormGroup>
+          
+          <ButtonGroup>
+            {isEditing ? (
+              <>
                 <Button 
                   type="button" 
-                  primary 
-                  onClick={handleEdit}
+                  secondary 
+                  onClick={handleCancel}
+                  theme={theme}
                 >
-                  <Edit2 size={18} />
-                  Edit Profile
+                  <X size={18} />
+                  Cancel
                 </Button>
-              )}
-            </ButtonGroup>
-          </ProfileForm>
-          
-          {error && <ErrorMessage>{error}</ErrorMessage>}
-          {success && <SuccessMessage>{success}</SuccessMessage>}
-        </ProfileCard>
-      </ContentContainer>
+                <Button 
+                  type="submit" 
+                  primary 
+                  disabled={isLoading}
+                >
+                  <Save size={18} />
+                  {isLoading ? 'Saving...' : 'Save'}
+                </Button>
+              </>
+            ) : (
+              <Button 
+                type="button" 
+                primary 
+                onClick={handleEdit}
+              >
+                <Edit2 size={18} />
+                Edit Profile
+              </Button>
+            )}
+          </ButtonGroup>
+        </ProfileForm>
+        
+        {error && <ErrorMessage>{error}</ErrorMessage>}
+        {success && <SuccessMessage>{success}</SuccessMessage>}
+      </ProfileCard>
     </ProfileContainer>
   );
 };

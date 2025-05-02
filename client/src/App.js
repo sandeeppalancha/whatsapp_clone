@@ -4,7 +4,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { useDispatch, useSelector } from 'react-redux';
 import { Capacitor } from '@capacitor/core';
 import styled from 'styled-components';
-import { Camera, Mic, Send, Paperclip, Smile } from 'lucide-react';
 
 // Import pages
 import Login from './pages/Login';
@@ -14,6 +13,9 @@ import Chat from './pages/Chat';
 import Group from './pages/Group';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
+
+// Import components
+import BottomNav from './components/BottomNav';
 
 // Import services
 import { initializeSocket } from './services/socketService';
@@ -33,6 +35,12 @@ const AppContainer = styled.div`
   height: 100vh;
   background-color: ${props => props.theme === 'dark' ? '#121212' : '#f5f5f5'};
   color: ${props => props.theme === 'dark' ? '#f5f5f5' : '#121212'};
+`;
+
+const ContentContainer = styled.div`
+  flex: 1;
+  overflow: hidden;
+  padding-bottom: 60px; /* Make room for bottom nav */
 `;
 
 // Protected route component
@@ -82,57 +90,63 @@ function App() {
   return (
     <AppContainer theme={theme}>
       <Router>
-        <Routes>
-          <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
-          <Route path="/register" element={isAuthenticated ? <Navigate to="/" replace /> : <Register />} />
-          
-          <Route 
-            path="/" 
-            element={
-              <ProtectedRoute>
-                <Home />
-              </ProtectedRoute>
-            } 
-          />
-          
-          <Route 
-            path="/chat/:id" 
-            element={
-              <ProtectedRoute>
-                <Chat />
-              </ProtectedRoute>
-            } 
-          />
-          
-          <Route 
-            path="/group/:id" 
-            element={
-              <ProtectedRoute>
-                <Group />
-              </ProtectedRoute>
-            } 
-          />
-          
-          <Route 
-            path="/profile" 
-            element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            } 
-          />
-          
-          <Route 
-            path="/settings" 
-            element={
-              <ProtectedRoute>
-                <Settings />
-              </ProtectedRoute>
-            } 
-          />
-          
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <ContentContainer>
+          <Routes>
+            <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
+            <Route path="/register" element={isAuthenticated ? <Navigate to="/" replace /> : <Register />} />
+            
+            <Route 
+              path="/" 
+              element={
+                <ProtectedRoute>
+                  <Home />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/chat/:id" 
+              element={
+                <ProtectedRoute>
+                  <Chat />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/group/:id" 
+              element={
+                <ProtectedRoute>
+                  <Group />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/profile" 
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/settings" 
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </ContentContainer>
+        
+        {isAuthenticated && (
+          <BottomNav theme={theme} />
+        )}
       </Router>
     </AppContainer>
   );

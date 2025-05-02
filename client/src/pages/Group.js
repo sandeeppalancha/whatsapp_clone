@@ -5,7 +5,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import styled from 'styled-components';
 
 // Import components
-import Sidebar from '../components/Sidebar';
 import ChatHeader from '../components/ChatHeader';
 import MessageList from '../components/MessageList';
 import ChatInput from '../components/ChatInput';
@@ -19,21 +18,14 @@ import chatService from '../services/chatService';
 
 const GroupContainer = styled.div`
   display: flex;
+  flex-direction: column;
   height: 100%;
   width: 100%;
-`;
-
-const GroupContent = styled.div`
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  height: 100%;
 `;
 
 const Group = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
-  const { isSidebarOpen } = useSelector(state => state.ui);
   const { user } = useSelector(state => state.auth);
   const { messages, conversations, isLoading } = useSelector(state => state.chat);
   const [groupInfo, setGroupInfo] = useState(null);
@@ -102,26 +94,22 @@ const Group = () => {
   
   return (
     <GroupContainer>
-      {isSidebarOpen && <Sidebar />}
+      <ChatHeader 
+        recipient={groupInfo}
+        isGroup={true}
+      />
       
-      <GroupContent>
-        <ChatHeader 
-          recipient={groupInfo}
-          isGroup={true}
-        />
-        
-        <MessageList 
-          messages={conversationMessages}
-          currentUserId={user?.id}
-          isLoading={isLoading}
-          isGroup={true}
-        />
-        
-        <ChatInput 
-          onSendMessage={handleSendMessage}
-          onTyping={handleTyping}
-        />
-      </GroupContent>
+      <MessageList 
+        messages={conversationMessages}
+        currentUserId={user?.id}
+        isLoading={isLoading}
+        isGroup={true}
+      />
+      
+      <ChatInput 
+        onSendMessage={handleSendMessage}
+        onTyping={handleTyping}
+      />
     </GroupContainer>
   );
 };

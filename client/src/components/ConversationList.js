@@ -4,9 +4,8 @@ import { useSelector } from 'react-redux';
 import styled from 'styled-components';
 
 const ListContainer = styled.div`
-  width: 300px;
+  width: 100%; /* Changed from 300px to full width */
   height: 100%;
-  border-right: 1px solid ${props => props.theme === 'dark' ? '#2a2a2a' : '#e0e0e0'};
   background-color: ${props => props.theme === 'dark' ? '#1e1e1e' : '#f8f8f8'};
   overflow-y: auto;
 `;
@@ -119,6 +118,28 @@ const NoConversations = styled.div`
   color: ${props => props.theme === 'dark' ? '#aaa' : '#777'};
 `;
 
+const AddConversationButton = styled.button`
+  position: fixed;
+  bottom: 70px; /* Position just above bottom nav */
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: #4caf50;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  
+  &:hover {
+    background-color: #3e8e41;
+  }
+`;
+
 const ConversationList = ({ conversations, isLoading, onConversationClick }) => {
   const { theme } = useSelector(state => state.ui);
   const [searchTerm, setSearchTerm] = useState('');
@@ -157,6 +178,11 @@ const ConversationList = ({ conversations, isLoading, onConversationClick }) => 
     if (!message) return '';
     if (message.length <= maxLength) return message;
     return message.slice(0, maxLength) + '...';
+  };
+
+  const handleNewConversation = () => {
+    // This would open a dialog to start a new conversation or group
+    alert("Feature coming soon: Start a new conversation or group");
   };
   
   return (
@@ -219,6 +245,10 @@ const ConversationList = ({ conversations, isLoading, onConversationClick }) => 
           );
         })
       )}
+      
+      <AddConversationButton onClick={handleNewConversation}>
+        <i className="material-icons">add</i>
+      </AddConversationButton>
     </ListContainer>
   );
 };
