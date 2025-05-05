@@ -11,5 +11,6 @@ router.get('/profile/:id', userController.getProfile);
 router.put('/profile', userController.updateProfile);
 router.post('/push-token', userController.storePushToken);
 router.get('/search', userController.searchUsers);
+router.get('/all', userController.getAllUsers);
 
 module.exports = router;

@@ -160,3 +160,26 @@ exports.searchUsers = async (req, res) => {
     });
   }
 };
+
+exports.getAllUsers = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // Find all users except the current user
+    const users = await User.findAll({
+      where: {
+        id: {
+          [Op.ne]: userId // Exclude current user
+        }
+      },
+      attributes: ['id', 'username', 'email', 'profilePicture', 'status', 'isOnline', 'lastSeen']
+    });
+    
+    res.json(users);
+  } catch (error) {
+    console.error('Get all users error:', error);
+    res.status(500).json({
+      message: 'Server error while getting users'
+    });
+  }
+};
