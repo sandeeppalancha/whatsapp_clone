@@ -10,7 +10,10 @@ const routes = require('./routes');
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: "*", // Allow all origins
+  credentials: false // Must be false when using wildcard origin
+}));
 app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());

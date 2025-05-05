@@ -10,8 +10,9 @@ const { Op } = require('sequelize');
 function configureSocket(server) {
   const io = socketIO(server, {
     cors: {
-      origin: process.env.CLIENT_URL || '*',
-      methods: ['GET', 'POST']
+      origin: '*',
+      methods: ['GET', 'POST'],
+      credentials: false
     }
   });
 
