@@ -1,14 +1,20 @@
-// client/src/components/ChatInput.js - Improved version
-import React, { useState, useRef, useCallback } from 'react';
+// client/src/components/ChatInput.js - Enhanced with file support
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import styled from 'styled-components';
 import { useSelector } from 'react-redux';
-import { Camera, Mic, Send, Paperclip, Smile } from 'lucide-react';
+import { Camera, Mic, Send, Paperclip, Smile, X } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
+import FileUploadInput from './FileUploadInput';
 
 const InputContainer = styled.div`
   padding: 15px;
   background-color: ${props => props.theme === 'dark' ? '#1e1e1e' : '#f8f8f8'};
   border-top: 1px solid ${props => props.theme === 'dark' ? '#2a2a2a' : '#e0e0e0'};
+  display: flex;
+  flex-direction: column;
+`;
+
+const InputRow = styled.div`
   display: flex;
   align-items: center;
 `;
@@ -51,49 +57,53 @@ const IconButton = styled.button`
 `;
 
 const AttachmentPreview = styled.div`
-  position: relative;
-  margin-right: 10px;
-  width: 50px;
-  height: 50px;
-  border-radius: 5px;
-  overflow: hidden;
+  margin: 5px;
+  padding: 8px;
+  background-color: ${props => props.theme === 'dark' ? '#333' : '#f0f0f0'};
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 `;
 
-const PreviewImage = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+const AttachmentName = styled.div`
+  font-size: 0.9em;
+  margin-left: 8px;
+  color: ${props => props.theme === 'dark' ? '#f5f5f5' : '#333'};
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const AttachmentSize = styled.div`
+  font-size: 0.8em;
+  color: ${props => props.theme === 'dark' ? '#aaa' : '#777'};
+  margin: 0 8px;
 `;
 
 const RemoveButton = styled.button`
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
+  background: none;
   border: none;
-  background-color: rgba(0, 0, 0, 0.5);
-  color: white;
+  color: ${props => props.theme === 'dark' ? '#ccc' : '#666'};
+  cursor: pointer;
+  padding: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  font-size: 12px;
   
   &:hover {
-    background-color: rgba(0, 0, 0, 0.7);
+    color: ${props => props.theme === 'dark' ? '#fff' : '#333'};
   }
 `;
 
 const ChatInput = ({ onSendMessage, onTyping }) => {
   const { theme } = useSelector(state => state.ui);
   const [message, setMessage] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
   const [attachments, setAttachments] = useState([]);
   const isNative = Capacitor.isNativePlatform();
   
-  const fileInputRef = useRef(null);
+  const fileUploadRef = useRef(null);
   
   // Handle message change
   const handleMessageChange = useCallback((e) => {
@@ -118,122 +128,95 @@ const ChatInput = ({ onSendMessage, onTyping }) => {
     }
   }, [handleSendMessage]);
   
-  // Handle attachment selection
-  const handleFileSelect = useCallback((e) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    
-    const newAttachments = [...attachments];
-    
-    // Process each selected file
-    Array.from(files).forEach((file, index) => {
-      const reader = new FileReader();
-      
-      reader.onload = (event) => {
-        const preview = file.type.startsWith('image/') ? event.target.result : null;
-        
-        newAttachments.push({
-          id: Date.now() + index,
-          file,
-          fileName: file.name,
-          fileType: file.type,
-          fileSize: file.size,
-          preview
-        });
-        
-        // Update state after all files are processed
-        if (index === files.length - 1) {
-          setAttachments(newAttachments);
-        }
-      };
-      
-      if (file.type.startsWith('image/')) {
-        reader.readAsDataURL(file);
-      } else {
-        reader.readAsArrayBuffer(file);
-      }
-    });
-    
-    // Clear the input to allow selecting the same file again
-    e.target.value = null;
-  }, [attachments]);
+  // Upload pending attachments before sending
+  useEffect(() => {
+    if (fileUploadRef.current && fileUploadRef.current.hasSelectedFiles) {
+      fileUploadRef.current.uploadAllFiles();
+    }
+  }, []);
+  
+  // Handle file selection from FileUploadInput
+  const handleFileSelected = useCallback((attachment) => {
+    setAttachments(prev => [...prev, attachment]);
+  }, []);
   
   // Handle remove attachment
   const handleRemoveAttachment = useCallback((id) => {
     setAttachments(prev => prev.filter(attachment => attachment.id !== id));
   }, []);
   
+  // Format file size for display
+  const formatFileSize = (bytes) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+  
   return (
     <InputContainer theme={theme}>
-      <input
-        type="file"
-        ref={fileInputRef}
-        style={{ display: 'none' }}
-        onChange={handleFileSelect}
-        multiple
-      />
-      
-      <IconButton 
-        onClick={() => fileInputRef.current.click()} 
-        theme={theme}
-      >
-        <Paperclip size={24} />
-      </IconButton>
-      
-      <IconButton 
-        onClick={() => fileInputRef.current.click()} 
-        theme={theme}
-      >
-        <Camera size={24} />
-      </IconButton>
-      
-      {attachments.map(attachment => (
-        <AttachmentPreview key={attachment.id}>
-          {attachment.preview ? (
-            <PreviewImage src={attachment.preview} alt="Attachment" />
-          ) : (
-            <div style={{ 
-              width: '100%', 
-              height: '100%', 
-              display: 'flex',
-              alignItems: 'center', 
-              justifyContent: 'center',
-              backgroundColor: '#f0f0f0',
-              color: '#555'
-            }}>
-              {attachment.fileName.split('.').pop().toUpperCase()}
-            </div>
-          )}
-          <RemoveButton onClick={() => handleRemoveAttachment(attachment.id)}>
-            ×
-          </RemoveButton>
-        </AttachmentPreview>
-      ))}
-      
-      <MessageInput
-        type="text"
-        placeholder="Type a message..."
-        value={message}
-        onChange={handleMessageChange}
-        onKeyPress={handleKeyPress}
+      <FileUploadInput 
+        ref={fileUploadRef}
+        onFileSelected={handleFileSelected}
         theme={theme}
       />
       
-      <IconButton theme={theme}>
-        <Smile size={24} />
-      </IconButton>
+      {attachments.length > 0 && (
+        <div>
+          {attachments.map(attachment => (
+            <AttachmentPreview key={attachment.id} theme={theme}>
+              <AttachmentName theme={theme}>{attachment.fileName}</AttachmentName>
+              <AttachmentSize theme={theme}>{formatFileSize(attachment.fileSize)}</AttachmentSize>
+              <RemoveButton 
+                theme={theme}
+                onClick={() => handleRemoveAttachment(attachment.id)}
+              >
+                <X size={18} />
+              </RemoveButton>
+            </AttachmentPreview>
+          ))}
+        </div>
+      )}
       
-      <IconButton theme={theme}>
-        <Mic size={24} />
-      </IconButton>
-      
-      <IconButton 
-        onClick={handleSendMessage} 
-        disabled={!message.trim() && attachments.length === 0}
-        theme={theme}
-      >
-        <Send size={24} />
-      </IconButton>
+      <InputRow>
+        <IconButton 
+          onClick={() => fileUploadRef.current?.openFileSelector()} 
+          theme={theme}
+        >
+          <Paperclip size={24} />
+        </IconButton>
+        
+        <IconButton 
+          onClick={() => fileUploadRef.current?.openFileSelector()} 
+          theme={theme}
+        >
+          <Camera size={24} />
+        </IconButton>
+        
+        <MessageInput
+          type="text"
+          placeholder="Type a message..."
+          value={message}
+          onChange={handleMessageChange}
+          onKeyPress={handleKeyPress}
+          theme={theme}
+        />
+        
+        <IconButton theme={theme}>
+          <Smile size={24} />
+        </IconButton>
+        
+        <IconButton theme={theme}>
+          <Mic size={24} />
+        </IconButton>
+        
+        <IconButton 
+          onClick={handleSendMessage} 
+          disabled={!message.trim() && attachments.length === 0}
+          theme={theme}
+        >
+          <Send size={24} />
+        </IconButton>
+      </InputRow>
     </InputContainer>
   );
 };

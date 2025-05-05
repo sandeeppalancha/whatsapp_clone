@@ -79,16 +79,23 @@ const uploadAttachment = (file, onUploadProgress) => {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
-    onUploadProgress,
+    onUploadProgress: onUploadProgress
   });
 };
 
+// Get attachment by ID
 const getAttachment = (attachmentId) => {
   return apiClient.get(`/attachments/${attachmentId}`);
 };
 
+// Delete attachment by ID
 const deleteAttachment = (attachmentId) => {
   return apiClient.delete(`/attachments/${attachmentId}`);
+};
+
+// Additional method to get attachment URL
+const getAttachmentUrl = (filePath) => {
+  return process.env.REACT_APP_BACKEND_URL + filePath;
 };
 
 const reportMessage = (messageId, reason) => {
@@ -148,6 +155,7 @@ export default {
   addUserToGroup,
   removeUserFromGroup,
   uploadAttachment,
+  getAttachmentUrl,
   getAllUsers,
   
   // New methods

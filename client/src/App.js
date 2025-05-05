@@ -24,6 +24,7 @@ import authService from './services/authService';
 
 // Import Redux actions
 import { setCredentials } from './redux/slices/authSlice';
+import { FilePreviewProvider } from './contexts/FilePreviewContext';
 
 // Check if running on a native platform
 const isNative = Capacitor.isNativePlatform();
@@ -82,36 +83,44 @@ function App() {
   const { isAuthenticated, token } = useSelector(state => state.auth);
   const { theme } = useSelector(state => state.ui);
   
-  useEffect(() => {
-    // Check if user is already logged in
-    const checkAuthStatus = async () => {
-      try {
-        if (token) {
-          // Get current user data
-          const response = await authService.getCurrentUser();
-          dispatch(setCredentials({
-            user: response.data,
-            token
-          }));
-          
-          // Initialize socket connection
-          initializeSocket(token);
-          
-          // Initialize push notifications on native platforms
-          if (isNative) {
-            initializePushNotifications();
+useEffect(() => {
+  // Check if user is already logged in
+  const checkAuthStatus = async () => {
+    try {
+      if (token) {
+        // Get current user data
+        const response = await authService.getCurrentUser();
+        dispatch(setCredentials({
+          user: response.data,
+          token
+        }));
+        
+        // Initialize socket connection
+        initializeSocket(token);
+        
+        // Initialize push notifications on native platforms
+        if (isNative) {
+          console.log('Initializing push notifications...');
+          try {
+            await initializePushNotifications();
+            console.log('Push notifications initialized successfully');
+          } catch (error) {
+            console.error('Failed to initialize push notifications:', error);
+            // Continue app execution even if push notifications fail
           }
         }
-      } catch (error) {
-        console.error('Auth check failed:', error);
       }
-    };
-    
-    checkAuthStatus();
-  }, [dispatch, token]);
+    } catch (error) {
+      console.error('Auth check failed:', error);
+    }
+  };
+  
+  checkAuthStatus();
+}, [dispatch, token]);
   
   return (
     <AppContainer theme={theme}>
+      <FilePreviewProvider>
       <Router>
         <NavigationController>
           <Routes>
@@ -167,6 +176,7 @@ function App() {
           </Routes>
         </NavigationController>
       </Router>
+      </FilePreviewProvider>
     </AppContainer>
   );
 }

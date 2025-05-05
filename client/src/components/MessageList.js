@@ -214,45 +214,51 @@ const MessageList = ({ messages, currentUserId, isLoading, isGroup }) => {
       messages
     }));
   };
-  
-  // Render attachment preview
+
   const renderAttachment = (attachment) => {
     if (!attachment) return null;
     
-    const isImage = attachment.fileName && /\.(jpeg|jpg|gif|png)$/i.test(attachment.fileName);
-    
-    if (isImage) {
-      return (
-        <AttachmentPreview key={attachment.id}>
-          <Image 
-            src={attachment.filePath} 
-            alt={attachment.fileName} 
-            onClick={() => window.open(attachment.filePath, '_blank')}
-          />
-        </AttachmentPreview>
-      );
-    } else {
-      // For documents
-      return (
-        <AttachmentPreview key={attachment.id}>
-          <Document 
-            theme={theme}
-            onClick={() => window.open(attachment.filePath, '_blank')}
-          >
-            <DocumentIcon theme={theme}>
-              <i className="material-icons">insert_drive_file</i>
-            </DocumentIcon>
-            <DocumentInfo>
-              <DocumentName theme={theme}>{attachment.fileName}</DocumentName>
-              <DocumentSize theme={theme}>
-                {Math.round((attachment.fileSize || 0) / 1024)} KB
-              </DocumentSize>
-            </DocumentInfo>
-          </Document>
-        </AttachmentPreview>
-      );
-    }
+    return <AttachmentPreview attachment={attachment} theme={theme} />;
   };
+  
+  // Render attachment preview
+  // const renderAttachment = (attachment) => {
+  //   if (!attachment) return null;
+    
+  //   const isImage = attachment.fileName && /\.(jpeg|jpg|gif|png)$/i.test(attachment.fileName);
+    
+  //   if (isImage) {
+  //     return (
+  //       <AttachmentPreview key={attachment.id}>
+  //         <Image 
+  //           src={attachment.filePath} 
+  //           alt={attachment.fileName} 
+  //           onClick={() => window.open(attachment.filePath, '_blank')}
+  //         />
+  //       </AttachmentPreview>
+  //     );
+  //   } else {
+  //     // For documents
+  //     return (
+  //       <AttachmentPreview key={attachment.id}>
+  //         <Document 
+  //           theme={theme}
+  //           onClick={() => window.open(attachment.filePath, '_blank')}
+  //         >
+  //           <DocumentIcon theme={theme}>
+  //             <i className="material-icons">insert_drive_file</i>
+  //           </DocumentIcon>
+  //           <DocumentInfo>
+  //             <DocumentName theme={theme}>{attachment.fileName}</DocumentName>
+  //             <DocumentSize theme={theme}>
+  //               {Math.round((attachment.fileSize || 0) / 1024)} KB
+  //             </DocumentSize>
+  //           </DocumentInfo>
+  //         </Document>
+  //       </AttachmentPreview>
+  //     );
+  //   }
+  // };
   
   // Get status icon
   const getStatusIcon = (status) => {

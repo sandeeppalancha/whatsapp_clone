@@ -1,8 +1,10 @@
 // client/src/services/authService.js
 import apiClient from './apiClient';
+import {  makeCapacitorHttpPostCall } from './capacitorHttp';
 
 const login = (credentials) => {
-  return apiClient.post('/auth/login', credentials);
+  // return apiClient.post('/auth/login', credentials);
+  return makeCapacitorHttpPostCall('/auth/login', 'POST', credentials)
 };
 
 const register = (userData) => {

@@ -15,7 +15,7 @@ module.exports = (sequelize, DataTypes) => {
   Attachment.init({
     messageId: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true, // Allow null during initial upload
       references: {
         model: 'Messages',
         key: 'id'
@@ -29,6 +29,10 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: false
     },
+    fileCategory: {
+      type: DataTypes.STRING, // image, video, audio, document, etc.
+      allowNull: false
+    },
     fileSize: {
       type: DataTypes.INTEGER,
       allowNull: false
@@ -36,6 +40,18 @@ module.exports = (sequelize, DataTypes) => {
     filePath: {
       type: DataTypes.STRING,
       allowNull: false
+    },
+    fileHash: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    uploadedBy: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'Users',
+        key: 'id'
+      }
     }
   }, {
     sequelize,

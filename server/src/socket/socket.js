@@ -97,14 +97,14 @@ function configureSocket(server) {
         const from = socket.user.id;
         
         // Validate parameters
-        if (!to || !message) {
+        if (!to || (!message && (!attachments || attachments.length === 0))) {
           socket.emit('error', { message: 'Invalid message parameters' });
           return;
         }
         
         // Save message to database
         const newMessage = await Message.create({
-          content: message,
+          content: message || '', // Allow empty content if there are attachments
           senderId: from,
           receiverId: to,
           isRead: false
@@ -139,7 +139,7 @@ function configureSocket(server) {
           io.to(recipientSocketId).emit('private_message', {
             id: newMessage.id,
             from,
-            message,
+            message: newMessage.content,
             attachments: messageWithAttachments.attachments,
             timestamp: newMessage.createdAt
           });
@@ -154,8 +154,20 @@ function configureSocket(server) {
         
         // Send push notification if recipient is offline
         if (!recipientSocketId) {
-          // This would be integrated with FCM for Android and APNs for iOS
-          sendPushNotification(to, from, message);
+          // Also include attachment info in the notification
+          const hasAttachments = messageWithAttachments.attachments.length > 0;
+          const notificationMessage = hasAttachments 
+            ? (message ? `${message} [Attachment]` : 'Sent an attachment')
+            : message;
+            
+          sendPushNotification(
+            to, 
+            from, 
+            notificationMessage,
+            null,
+            false,
+            hasAttachments
+          );
         }
       } catch (error) {
         console.error('Private message error:', error);

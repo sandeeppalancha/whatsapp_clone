@@ -2,7 +2,25 @@
 const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
-const { Attachment } = require('../db/models');
+const { Attachment, Message } = require('../db/models');
+const crypto = require('crypto');
+
+// Helper to check file type
+const getFileType = (mimeType) => {
+  if (mimeType.startsWith('image/')) return 'image';
+  if (mimeType.startsWith('video/')) return 'video';
+  if (mimeType.startsWith('audio/')) return 'audio';
+  if (mimeType === 'application/pdf') return 'pdf';
+  if (['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(mimeType)) return 'document';
+  if (['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'].includes(mimeType)) return 'spreadsheet';
+  return 'file';
+};
+
+// Generate a secure filename
+const generateSecureFilename = (originalName) => {
+  const fileExt = path.extname(originalName);
+  return `${uuidv4()}${fileExt}`;
+};
 
 /**
  * Upload file attachment
@@ -18,26 +36,47 @@ exports.uploadAttachment = async (req, res) => {
     const userId = req.user.id;
     const file = req.file;
     
+    // Check file size (limit to 50MB for example)
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+    if (file.size > MAX_FILE_SIZE) {
+      return res.status(400).json({
+        message: 'File too large. Maximum file size is 50MB.'
+      });
+    }
+    
     // Create upload directory if it doesn't exist
     const uploadDir = path.join(__dirname, '../../uploads');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
     
-    // Generate unique filename
-    const fileExt = path.extname(file.originalname);
-    const fileName = `${uuidv4()}${fileExt}`;
-    const filePath = path.join(uploadDir, fileName);
+    // Create user-specific directory for better organization
+    const userDir = path.join(uploadDir, userId.toString());
+    if (!fs.existsSync(userDir)) {
+      fs.mkdirSync(userDir, { recursive: true });
+    }
+    
+    // Generate secure filename
+    const secureFilename = generateSecureFilename(file.originalname);
+    const filePath = path.join(userDir, secureFilename);
+    
+    // Calculate file hash for integrity checks
+    const fileHash = crypto.createHash('sha256').update(file.buffer).digest('hex');
     
     // Save file
     fs.writeFileSync(filePath, file.buffer);
+    
+    // Determine file type for frontend display
+    const fileType = getFileType(file.mimetype);
     
     // Create database record
     const attachment = await Attachment.create({
       fileName: file.originalname,
       fileType: file.mimetype,
+      fileCategory: fileType, // Add this field to the model
       fileSize: file.size,
-      filePath: `/uploads/${fileName}`, // Store path relative to API root
+      filePath: `/uploads/${userId}/${secureFilename}`, // Store path relative to API root
+      fileHash: fileHash,
       uploadedBy: userId
     });
     
@@ -45,8 +84,11 @@ exports.uploadAttachment = async (req, res) => {
       id: attachment.id,
       fileName: attachment.fileName,
       fileType: attachment.fileType,
+      fileCategory: fileType,
       fileSize: attachment.fileSize,
-      filePath: attachment.filePath
+      filePath: attachment.filePath,
+      fileHash: fileHash,
+      uploadedAt: attachment.createdAt
     });
   } catch (error) {
     console.error('Upload attachment error:', error);
@@ -57,13 +99,21 @@ exports.uploadAttachment = async (req, res) => {
 };
 
 /**
- * Get attachment
+ * Get attachment details
  */
 exports.getAttachment = async (req, res) => {
   try {
     const { id } = req.params;
     
-    const attachment = await Attachment.findByPk(id);
+    const attachment = await Attachment.findByPk(id, {
+      include: [
+        {
+          model: Message,
+          as: 'message',
+          attributes: ['id', 'groupId', 'receiverId', 'senderId']
+        }
+      ]
+    });
     
     if (!attachment) {
       return res.status(404).json({
@@ -71,11 +121,32 @@ exports.getAttachment = async (req, res) => {
       });
     }
     
+    // Check permission
+    const userId = req.user.id;
+    const message = attachment.message;
+    
+    // Check if user has access to this attachment
+    if (message) {
+      // For private messages, only sender and receiver can access
+      if (message.receiverId && message.receiverId !== userId && message.senderId !== userId) {
+        return res.status(403).json({
+          message: 'You do not have permission to access this attachment'
+        });
+      }
+      
+      // For group messages, check if user is in group (simplified - would need group membership check)
+      if (message.groupId) {
+        // This would need a proper check with group membership
+        // For now, assume access is allowed in this example
+      }
+    }
+    
     // Return attachment metadata
     res.json({
       id: attachment.id,
       fileName: attachment.fileName,
       fileType: attachment.fileType,
+      fileCategory: getFileType(attachment.fileType), // Calculate if field doesn't exist
       fileSize: attachment.fileSize,
       filePath: attachment.filePath,
       createdAt: attachment.createdAt
@@ -96,7 +167,15 @@ exports.deleteAttachment = async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
     
-    const attachment = await Attachment.findByPk(id);
+    const attachment = await Attachment.findByPk(id, {
+      include: [
+        {
+          model: Message,
+          as: 'message',
+          attributes: ['id', 'senderId']
+        }
+      ]
+    });
     
     if (!attachment) {
       return res.status(404).json({
@@ -104,18 +183,12 @@ exports.deleteAttachment = async (req, res) => {
       });
     }
     
-    // Check ownership or message ownership
-    // This would need to be expanded for proper security
-    if (attachment.uploadedBy !== userId) {
-      // Check if the attachment is in a message owned by the user
-      // This is a simplified check - in a real app you'd check if the attachment belongs to a message sent by this user
-      const hasAccess = await checkAttachmentAccess(userId, id);
-      
-      if (!hasAccess) {
-        return res.status(403).json({
-          message: 'You do not have permission to delete this attachment'
-        });
-      }
+    // Check if user has permission (only uploader or message sender can delete)
+    if (attachment.uploadedBy !== userId && 
+        (!attachment.message || attachment.message.senderId !== userId)) {
+      return res.status(403).json({
+        message: 'You do not have permission to delete this attachment'
+      });
     }
     
     // Delete file from filesystem
@@ -137,18 +210,3 @@ exports.deleteAttachment = async (req, res) => {
     });
   }
 };
-
-/**
- * Helper function to check if user has access to an attachment
- */
-async function checkAttachmentAccess(userId, attachmentId) {
-  try {
-    // This is a placeholder for a proper check
-    // In a real application, you would check if the attachment belongs to a message sent by the user
-    // or a message in a conversation or group where the user is a participant
-    return true;
-  } catch (error) {
-    console.error('Check attachment access error:', error);
-    return false;
-  }
-}

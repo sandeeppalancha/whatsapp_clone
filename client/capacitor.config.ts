@@ -21,11 +21,11 @@ const config: CapacitorConfig = {
       presentationOptions: ["badge", "sound", "alert"],
     },
   },
-  server: {
-    // For development only - use capacitor.config.json for production
-    url: "http://192.168.1.100:3000", // Update with your local IP when testing
-    cleartext: true,
-  },
+  // server: {
+  //   // For development only - use capacitor.config.json for production
+  //   url: "http://192.168.1.100:3000", // Update with your local IP when testing
+  //   cleartext: true,
+  // },
 };
 
 export default config;
