@@ -1,4 +1,4 @@
-// client/src/components/CreateGroupModal.js
+// client/src/components/CreateGroupModal.js - Updated to show all users
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import styled from 'styled-components';
@@ -8,7 +8,7 @@ import { X, Camera, Check, Search } from 'lucide-react';
 import chatService from '../services/chatService';
 
 // Import Redux actions
-import { fetchContacts } from '../redux/slices/chatSlice';
+import { addConversation } from '../redux/slices/chatSlice';
 
 const ModalOverlay = styled.div`
   position: fixed;
@@ -32,6 +32,7 @@ const ModalContainer = styled.div`
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
 `;
 
 const ModalHeader = styled.div`
@@ -110,6 +111,8 @@ const CameraIcon = styled.div`
 
 const InputGroup = styled.div`
   margin-bottom: 15px;
+  width: 100%;
+  box-sizing: border-box;
 `;
 
 const Label = styled.label`
@@ -126,6 +129,7 @@ const Input = styled.input`
   border: 1px solid ${props => props.theme === 'dark' ? '#444' : '#ddd'};
   background-color: ${props => props.theme === 'dark' ? '#333' : '#fff'};
   color: ${props => props.theme === 'dark' ? '#f5f5f5' : '#333'};
+  box-sizing: border-box;
   
   &:focus {
     outline: none;
@@ -142,6 +146,7 @@ const TextArea = styled.textarea`
   color: ${props => props.theme === 'dark' ? '#f5f5f5' : '#333'};
   resize: vertical;
   min-height: 70px;
+  box-sizing: border-box;
   
   &:focus {
     outline: none;
@@ -156,6 +161,8 @@ const ParticipantsSection = styled.div`
 const SearchContainer = styled.div`
   position: relative;
   margin-bottom: 15px;
+  width: 100%;
+  box-sizing: border-box;
 `;
 
 const SearchInput = styled.input`
@@ -165,6 +172,7 @@ const SearchInput = styled.input`
   border: 1px solid ${props => props.theme === 'dark' ? '#444' : '#ddd'};
   background-color: ${props => props.theme === 'dark' ? '#333' : '#fff'};
   color: ${props => props.theme === 'dark' ? '#f5f5f5' : '#333'};
+  box-sizing: border-box;
   
   &:focus {
     outline: none;
@@ -318,10 +326,22 @@ const Button = styled.button`
   `}
 `;
 
+const LoadingIndicator = styled.div`
+  text-align: center;
+  padding: 20px;
+  color: ${props => props.theme === 'dark' ? '#aaa' : '#666'};
+`;
+
+const NoResults = styled.div`
+  text-align: center;
+  padding: 20px;
+  color: ${props => props.theme === 'dark' ? '#aaa' : '#666'};
+`;
+
 const CreateGroupModal = ({ isOpen, onClose, onSuccess }) => {
   const dispatch = useDispatch();
   const { theme } = useSelector(state => state.ui);
-  const { contacts } = useSelector(state => state.chat);
+  const currentUser = useSelector(state => state.auth.user);
   
   const [groupInfo, setGroupInfo] = useState({
     name: '',
@@ -333,16 +353,51 @@ const CreateGroupModal = ({ isOpen, onClose, onSuccess }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(null);
+  const [allUsers, setAllUsers] = useState([]);
+  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   
   // Input ref for file upload
   const fileInputRef = React.useRef(null);
   
-  // Load contacts if not already loaded
+  // Fetch all users
   useEffect(() => {
-    if (contacts.length === 0) {
-      dispatch(fetchContacts());
+    if (isOpen) {
+      const fetchAllUsers = async () => {
+        setIsLoading(true);
+        setError('');
+        
+        try {
+          const response = await chatService.getAllUsers();
+          // Filter out current user
+          const users = response.data.filter(user => user.id !== currentUser?.id);
+          setAllUsers(users);
+          setFilteredUsers(users);
+        } catch (err) {
+          console.error('Error fetching users:', err);
+          setError('Failed to load users. Please try again.');
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      fetchAllUsers();
     }
-  }, [dispatch, contacts.length]);
+  }, [isOpen, currentUser]);
+  
+  // Filter users based on search term
+  useEffect(() => {
+    if (searchTerm.trim() === '') {
+      setFilteredUsers(allUsers);
+    } else {
+      const filtered = allUsers.filter(user => 
+        user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+      setFilteredUsers(filtered);
+    }
+  }, [searchTerm, allUsers]);
   
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -384,10 +439,6 @@ const CreateGroupModal = ({ isOpen, onClose, onSuccess }) => {
   const removeSelectedContact = (contactId) => {
     setSelectedContacts(prev => prev.filter(c => c.id !== contactId));
   };
-  
-  const filteredContacts = contacts.filter(contact => {
-    return contact.username.toLowerCase().includes(searchTerm.toLowerCase());
-  });
   
   const handleCreateGroup = async () => {
     // Validate form
@@ -447,6 +498,7 @@ const CreateGroupModal = ({ isOpen, onClose, onSuccess }) => {
       setSelectedContacts([]);
       setSearchTerm('');
       setAvatarPreview(null);
+      setError('');
     }
   }, [isOpen]);
   
@@ -531,7 +583,7 @@ const CreateGroupModal = ({ isOpen, onClose, onSuccess }) => {
               </SearchIconContainer>
               <SearchInput 
                 type="text"
-                placeholder="Search contacts"
+                placeholder="Search users"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 theme={theme}
@@ -539,12 +591,16 @@ const CreateGroupModal = ({ isOpen, onClose, onSuccess }) => {
             </SearchContainer>
             
             <ContactsList>
-              {filteredContacts.length === 0 ? (
-                <div style={{ padding: '10px', color: theme === 'dark' ? '#aaa' : '#666' }}>
-                  No contacts found
-                </div>
+              {isLoading ? (
+                <LoadingIndicator theme={theme}>Loading users...</LoadingIndicator>
+              ) : error ? (
+                <div style={{ color: 'red', padding: '10px' }}>{error}</div>
+              ) : filteredUsers.length === 0 ? (
+                <NoResults theme={theme}>
+                  {searchTerm ? 'No users found' : 'No users available'}
+                </NoResults>
               ) : (
-                filteredContacts.map(contact => {
+                filteredUsers.map(contact => {
                   const isSelected = selectedContacts.some(c => c.id === contact.id);
                   return (
                     <ContactItem 

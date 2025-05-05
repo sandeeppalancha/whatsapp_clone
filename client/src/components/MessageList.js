@@ -30,7 +30,7 @@ const MessageBubble = styled.div`
   margin-bottom: 10px;
   position: relative;
   word-wrap: break-word;
-  padding-bottom: 25px; /* Make room for timestamp */
+  padding-bottom: 15px; /* Make room for timestamp */
   
   ${props => props.isSent ? `
     background-color: ${props.theme === 'dark' ? '#2a5885' : '#e3f2fd'};

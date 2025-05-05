@@ -27,7 +27,7 @@ export const initializeSocket = (token) => {
     socket.close();
   }
 
-  const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+  const BACKEND_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
   
   // Create new socket connection with authentication
   socket = io(BACKEND_URL, {

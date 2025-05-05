@@ -132,6 +132,10 @@ const deleteGroup = (groupId) => {
   return apiClient.delete(`/groups/${groupId}`);
 };
 
+const getAllUsers = () => {
+  return apiClient.get('/users/all');
+};
+
 export default {
   // Existing methods
   getContacts,
@@ -144,6 +148,7 @@ export default {
   addUserToGroup,
   removeUserFromGroup,
   uploadAttachment,
+  getAllUsers,
   
   // New methods
   markMessageAsRead,

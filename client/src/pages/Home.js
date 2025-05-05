@@ -9,6 +9,8 @@ import { Plus, UserPlus, Users } from 'lucide-react';
 import ConversationList from '../components/ConversationList';
 import EmptyChat from '../components/EmptyChat';
 import CreateGroupModal from '../components/CreateGroupModal';
+import NewChatModal from '../components/NewChatModal';
+
 
 // Import Redux actions
 import { fetchConversations, fetchContacts, addConversation } from '../redux/slices/chatSlice';
@@ -43,11 +45,11 @@ const FloatingActionButton = styled.button`
 
 const ActionMenu = styled.div`
   position: absolute;
-  bottom: 65px;
-  right: 0;
+  bottom: 110px; // Changed from 65px to 70px for more space
+  right: 20px; // Added right positioning to align with FAB
   background-color: ${props => props.theme === 'dark' ? '#1e1e1e' : '#fff'};
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0px 2px 12px rgba(0, 0, 0, 0.45);
   overflow: hidden;
   width: 180px;
 `;
@@ -80,6 +82,8 @@ const Home = () => {
   
   const [showMenu, setShowMenu] = useState(false);
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+  const [showNewChatModal, setShowNewChatModal] = useState(false);
+
   
   useEffect(() => {
     // Fetch conversations and contacts on component mount
@@ -99,9 +103,8 @@ const Home = () => {
   };
   
   const handleNewChat = () => {
-    // This would open a contacts modal to start a new conversation
     setShowMenu(false);
-    alert("Feature coming soon: Start a new private chat");
+    setShowNewChatModal(true);
   };
   
   const handleNewGroup = () => {
@@ -155,6 +158,11 @@ const Home = () => {
         isOpen={showCreateGroupModal} 
         onClose={() => setShowCreateGroupModal(false)}
         onSuccess={handleGroupCreated}
+      />
+
+      <NewChatModal 
+        isOpen={showNewChatModal} 
+        onClose={() => setShowNewChatModal(false)}
       />
     </HomeContainer>
   );

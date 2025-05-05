@@ -13,6 +13,8 @@ const ListContainer = styled.div`
 const SearchBar = styled.div`
   padding: 15px;
   border-bottom: 1px solid ${props => props.theme === 'dark' ? '#2a2a2a' : '#e0e0e0'};
+  width: 100%;
+  box-sizing: border-box;
 `;
 
 const SearchInput = styled.input`
@@ -22,6 +24,7 @@ const SearchInput = styled.input`
   border: 1px solid ${props => props.theme === 'dark' ? '#333' : '#e0e0e0'};
   background-color: ${props => props.theme === 'dark' ? '#333' : '#fff'};
   color: ${props => props.theme === 'dark' ? '#f5f5f5' : '#333'};
+  box-sizing: border-box;
   
   &:focus {
     outline: none;

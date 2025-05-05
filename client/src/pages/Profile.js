@@ -33,9 +33,11 @@ const ProfileCard = styled.div`
   border-radius: 10px;
   padding: 30px;
   max-width: 600px;
-  margin: 0 auto;
   width: 100%;
+  box-sizing: border-box; // Add this
+  margin: 0 auto;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  overflow: hidden; // Add this to prevent overflow
 `;
 
 const AvatarSection = styled.div`
@@ -89,7 +91,9 @@ const ProfileForm = styled.form`
 `;
 
 const FormGroup = styled.div`
-  margin-bottom: 20px;
+  margin-bottom: 15px;
+  width: 100%; // Add this
+  box-sizing: border-box; // Add this
 `;
 
 const Label = styled.label`
@@ -100,7 +104,22 @@ const Label = styled.label`
 
 const Input = styled.input`
   width: 100%;
-  padding: 12px;
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid ${props => props.theme === 'dark' ? '#444' : '#ddd'};
+  background-color: ${props => props.theme === 'dark' ? '#333' : '#fff'};
+  color: ${props => props.theme === 'dark' ? '#f5f5f5' : '#333'};
+  box-sizing: border-box; // Add this
+  
+  &:focus {
+    outline: none;
+    border-color: ${props => props.theme === 'dark' ? '#666' : '#ccc'};
+  }
+`;
+
+const Select = styled.select`
+  width: 100%;
+  padding: 10px;
   border-radius: 5px;
   border: 1px solid ${props => props.theme === 'dark' ? '#444' : '#ddd'};
   background-color: ${props => props.theme === 'dark' ? '#333' : '#fff'};
@@ -332,13 +351,17 @@ const Profile = () => {
           
           <FormGroup>
             <Label theme={theme}>Status</Label>
-            <TextArea
+            <Select
               name="status"
               value={formData.status}
               onChange={handleChange}
               disabled={!isEditing}
               theme={theme}
-            />
+            >
+              <option value="Available">Available</option>
+              <option value="Busy">Busy</option>
+              <option value="In a meeting">In a meeting</option>
+            </Select>
           </FormGroup>
           
           <ButtonGroup>

@@ -16,6 +16,8 @@ const SettingsContainer = styled.div`
   padding: 20px;
   background-color: ${props => props.theme === 'dark' ? '#121212' : '#f5f5f5'};
   color: ${props => props.theme === 'dark' ? '#f5f5f5' : '#333'};
+  box-sizing: border-box; // Add this
+  overflow-y: auto; // Add scrolling if needed
 `;
 
 const SettingsHeader = styled.div`
@@ -33,6 +35,7 @@ const SettingsContent = styled.div`
   max-width: 800px;
   margin: 0 auto;
   width: 100%;
+  box-sizing: border-box; // Add this
 `;
 
 const SettingsSection = styled.div`
@@ -41,6 +44,8 @@ const SettingsSection = styled.div`
   padding: 20px;
   margin-bottom: 20px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  width: 100%; // Add this
+  box-sizing: border-box; // Add this
 `;
 
 const SectionTitle = styled.h2`
@@ -61,9 +66,17 @@ const SettingItem = styled.div`
   justify-content: space-between;
   padding: 15px 0;
   border-bottom: 1px solid ${props => props.theme === 'dark' ? '#333' : '#f0f0f0'};
+  width: 100%; // Add this
+  box-sizing: border-box; // Add this
+  flex-wrap: wrap; // Add this to handle small screens
   
   &:last-child {
     border-bottom: none;
+  }
+
+  @media (max-width: 480px) {
+    flex-direction: column;
+    align-items: flex-start;
   }
 `;
 
