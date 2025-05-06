@@ -3,7 +3,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.fyzks.chatapp',
-  appName: 'ChatUp',
+  appName: 'Graviti Chat',
   webDir: 'build',
   // bundledWebRuntime: false,
   plugins: {

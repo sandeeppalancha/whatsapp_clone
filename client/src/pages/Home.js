@@ -11,7 +11,6 @@ import EmptyChat from '../components/EmptyChat';
 import CreateGroupModal from '../components/CreateGroupModal';
 import NewChatModal from '../components/NewChatModal';
 
-
 // Import Redux actions
 import { fetchConversations, fetchContacts, addConversation } from '../redux/slices/chatSlice';
 
@@ -19,6 +18,34 @@ const HomeContainer = styled.div`
   display: flex;
   height: 100%;
   width: 100%;
+`;
+
+// Add a header component for the chats list
+const ChatsHeader = styled.div`
+  padding: 15px 20px;
+  background-color: ${props => props.theme === 'dark' ? '#1e1e1e' : '#f8f8f8'};
+  border-bottom: 1px solid ${props => props.theme === 'dark' ? '#2a2a2a' : '#e0e0e0'};
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+`;
+
+const HeaderTitle = styled.h1`
+  font-size: 1.5rem;
+  margin: 0;
+  color: ${props => props.theme === 'dark' ? '#f5f5f5' : '#4caf50'};
+  font-weight: 600;
+`;
+
+const ContentArea = styled.div`
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
 `;
 
 const FloatingActionButton = styled.button`
@@ -131,11 +158,19 @@ const Home = () => {
   
   return (
     <HomeContainer>
-      <ConversationList 
-        conversations={conversations}
-        isLoading={isLoading}
-        onConversationClick={handleConversationClick}
-      />
+      <ContentArea>
+        {/* Add the new header */}
+        <ChatsHeader theme={theme}>
+          <HeaderTitle theme={theme}>Chats</HeaderTitle>
+        </ChatsHeader>
+        
+        {/* Conversation list remains the same */}
+        <ConversationList 
+          conversations={conversations}
+          isLoading={isLoading}
+          onConversationClick={handleConversationClick}
+        />
+      </ContentArea>
       
       <FloatingActionButton onClick={toggleMenu}>
         <Plus size={24} />

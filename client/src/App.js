@@ -2,6 +2,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
+import { StatusBar, Style } from '@capacitor/status-bar';
 import { Capacitor } from '@capacitor/core';
 import styled from 'styled-components';
 
@@ -82,6 +83,16 @@ function App() {
   const dispatch = useDispatch();
   const { isAuthenticated, token } = useSelector(state => state.auth);
   const { theme } = useSelector(state => state.ui);
+
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      // Set status bar based on theme
+      StatusBar.setStyle({ style: theme === 'dark' ? Style.Dark : Style.Light });
+      
+      // Make room for the status bar (pushes content down)
+      StatusBar.setOverlaysWebView({ overlay: false });
+    }
+  }, [theme]);
   
 useEffect(() => {
   // Check if user is already logged in

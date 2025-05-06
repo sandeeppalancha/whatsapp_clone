@@ -11,7 +11,11 @@ const InputContainer = styled.div`
   background-color: ${props => props.theme === 'dark' ? '#1e1e1e' : '#f8f8f8'};
   border-top: 1px solid ${props => props.theme === 'dark' ? '#2a2a2a' : '#e0e0e0'};
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  position: sticky; /* Add this */
+  bottom: 0; /* Add this */
+  z-index: 10; /* Add this */
+  padding-bottom: env(safe-area-inset-bottom); /* Add this for notched phones */
 `;
 
 const InputRow = styled.div`

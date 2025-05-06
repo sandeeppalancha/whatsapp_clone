@@ -1,6 +1,7 @@
 // server/src/controllers/userController.js
 const { User } = require('../db/models');
 const { Op } = require('sequelize');
+const bcrypt = require('bcrypt');
 
 /**
  * Get user profile
@@ -180,6 +181,66 @@ exports.getAllUsers = async (req, res) => {
     console.error('Get all users error:', error);
     res.status(500).json({
       message: 'Server error while getting users'
+    });
+  }
+};
+
+// server/src/controllers/userController.js
+// Add this function to the userController
+
+/**
+ * Change user password
+ */
+exports.changePassword = async (req, res) => {
+  try {    
+    const userId = req.user.id;
+    const { currentPassword, newPassword } = req.body;
+    
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        message: 'Current password and new password are required'
+      });
+    }
+    
+    // Find user
+    const user = await User.findByPk(userId);
+    
+    if (!user) {
+      return res.status(404).json({
+        message: 'User not found'
+      });
+    }
+    
+    // Verify current password
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);// await user.validatePassword(currentPassword);
+    
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        message: 'Current password is incorrect'
+      });
+    }
+    
+    // Validate new password
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        message: 'New password must be at least 6 characters long'
+      });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPwd = await bcrypt.hash(newPassword, salt);
+        
+    user.password = hashedPwd;
+    await user.save();
+    
+    res.json({
+      message: 'Password updated successfully',
+      success: true
+    });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({
+      message: 'Server error while changing password'
     });
   }
 };

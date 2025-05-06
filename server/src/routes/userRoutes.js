@@ -13,4 +13,7 @@ router.post('/push-token', userController.storePushToken);
 router.get('/search', userController.searchUsers);
 router.get('/all', userController.getAllUsers);
 
+// Add the new route for password update
+router.put('/password', userController.changePassword);
+
 module.exports = router;

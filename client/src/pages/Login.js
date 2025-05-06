@@ -181,7 +181,8 @@ const Login = () => {
         </Form>
         
         <RegisterLink theme={theme}>
-          Don't have an account? <Link to="/register">Register</Link>
+          Don't have an account? Ask Admin to create an account for you.
+           {/* <Link to="/register">Register</Link> */}
         </RegisterLink>
       </FormCard>
     </LoginContainer>

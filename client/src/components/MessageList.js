@@ -10,6 +10,7 @@ const ListContainer = styled.div`
   background-color: ${props => props.theme === 'dark' ? '#121212' : '#f5f5f5'};
   display: flex;
   flex-direction: column;
+  height: 0; /* Add this to ensure flex growing works */
 `;
 
 const MessageGroup = styled.div`

@@ -12,9 +12,7 @@ exports.register = async (req, res) => {
     
     // Check if user already exists
     const existingUser = await User.findOne({
-      where: {
-        email
-      }
+      where: { email }
     });
     
     if (existingUser) {
@@ -22,12 +20,15 @@ exports.register = async (req, res) => {
         message: 'User with this email already exists'
       });
     }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPwd = await bcrypt.hash(user.password, salt);
     
-    // Create user
+    // Create user with encrypted password
     const user = await User.create({
       username,
       email,
-      password // password will be hashed in the model's beforeCreate hook
+      password: hashedPwd // This will trigger the beforeCreate hook
     });
     
     // Generate JWT token
@@ -37,7 +38,7 @@ exports.register = async (req, res) => {
       { expiresIn: '1d' }
     );
     
-    // Return user without password and token
+    // Return user without password
     const userResponse = {
       id: user.id,
       username: user.username,
@@ -66,27 +67,31 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
     
-    // Find user
+    // Find user - IMPORTANT: Don't use raw: true here
     const user = await User.findOne({
       where: {
         email
-      },
-      raw: true
+      }
     });
-
-    console.log("resp", user);
     
+    console.log("Looking for user with email:", email);
     
     if (!user) {
+      console.log("User not found with email:", email);
       return res.status(401).json({
         message: 'Invalid credentials'
       });
     }
     
-    // Validate password
-    const isPasswordValid = true; // await bcrypt.compare(password, user.password); //await User.validatePassword(password);
+    console.log("User found:", user.id, user.username);
+    const salt = await bcrypt.genSalt(10);
+    console.log("Hashed password", await bcrypt.hash(password, salt));
     
-    console.log("isPasswordValid", isPasswordValid);
+    
+    // Use the instance method for password validation
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    
+    console.log("Password validation result:", isPasswordValid);
     
     if (!isPasswordValid) {
       return res.status(401).json({
@@ -97,7 +102,7 @@ exports.login = async (req, res) => {
     // Update user status
     user.isOnline = true;
     user.lastSeen = new Date();
-    // await user.save();
+    await user.save();
     
     // Generate JWT token
     const token = jwt.sign(
