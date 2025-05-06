@@ -101,10 +101,28 @@ const FileUploadInput = forwardRef(({ onFileSelected, theme }, ref) => {
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
     openFileSelector: () => fileInputRef.current?.click(),
-    uploadAllFiles: () => {
-      selectedFiles.forEach(file => {
-        uploadFile(file);
-      });
+    // Update the uploadAllFiles method in FileUploadInput to return the result
+    uploadAllFiles: async () => {
+      console.log("Attempting to upload all files:", selectedFiles);
+      
+      if (selectedFiles.length === 0) return [];
+      
+      // Create an array of upload promises
+      const uploadPromises = selectedFiles.map(file => uploadFile(file));
+      
+      // Wait for all uploads to complete
+      try {
+        const results = await Promise.all(uploadPromises);
+        console.log("All files uploaded successfully:", results);
+        
+        // Clear selected files after successful upload
+        setSelectedFiles([]);
+        
+        return results;
+      } catch (error) {
+        console.error('Error uploading files:', error);
+        throw error;
+      }
     },
     hasSelectedFiles: selectedFiles.length > 0
   }));
@@ -157,6 +175,8 @@ const FileUploadInput = forwardRef(({ onFileSelected, theme }, ref) => {
   };
 
   const uploadFile = async (fileObj) => {
+    console.log("Upload file", fileObj);
+    
     try {
       setUploadProgress(prev => ({ ...prev, [fileObj.id]: 0 }));
       setUploadErrors(prev => {
@@ -178,25 +198,31 @@ const FileUploadInput = forwardRef(({ onFileSelected, theme }, ref) => {
           setUploadProgress(prev => ({ ...prev, [fileObj.id]: percentage }));
         }
       );
+
+      console.log("uploadAttachment response", response);
+      
       
       // Upload complete
       setUploadProgress(prev => ({ ...prev, [fileObj.id]: 100 }));
       
       // Call the callback with the uploaded attachment info
-      onFileSelected({
+      const attachmentInfo = {
         id: response.data.id,
         fileName: response.data.fileName,
         fileType: response.data.fileType,
-        fileCategory: response.data.fileCategory,
+        fileCategory: response.data.fileCategory || '',
         fileSize: response.data.fileSize,
         filePath: response.data.filePath,
         localId: fileObj.id
-      });
+      };
       
-      // Remove from selected files list after short delay (to show completion)
-      setTimeout(() => {
-        removeFile(fileObj.id);
-      }, 1000);
+      onFileSelected(attachmentInfo);
+      
+      // Remove the setTimeout here - let the parent component manage the state
+      // Just mark as completed
+      setUploadProgress(prev => ({ ...prev, [fileObj.id]: 100 }));
+      
+      return attachmentInfo;
       
     } catch (error) {
       console.error('File upload error:', error);
@@ -204,6 +230,7 @@ const FileUploadInput = forwardRef(({ onFileSelected, theme }, ref) => {
         ...prev, 
         [fileObj.id]: error.response?.data?.message || 'Upload failed' 
       }));
+      throw error;
     }
   };
 

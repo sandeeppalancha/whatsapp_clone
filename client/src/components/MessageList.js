@@ -83,7 +83,8 @@ const MessageStatus = styled.span`
 `;
 
 const AttachmentPreview = styled.div`
-  margin-top: 5px;
+  margin-top: 8px;
+  max-width: 200px;
 `;
 
 const Image = styled.img`
@@ -215,10 +216,83 @@ const MessageList = ({ messages, currentUserId, isLoading, isGroup }) => {
     }));
   };
 
+  const formatFileSize = (bytes) => {
+    if (!bytes) return '0 B';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
   const renderAttachment = (attachment) => {
     if (!attachment) return null;
     
-    return <AttachmentPreview attachment={attachment} theme={theme} />;
+    // Determine the type of attachment based on fileType
+    const isImage = attachment.fileType && /\.(jpeg|jpg|gif|png)$/i.test(attachment.fileName) 
+      || attachment.fileType.startsWith('image/');
+    
+    const isVideo = attachment.fileType && /\.(mp4|webm|ogg|mov)$/i.test(attachment.fileName)
+      || attachment.fileType.startsWith('video/');
+    
+    const isAudio = attachment.fileType && /\.(mp3|wav|ogg)$/i.test(attachment.fileName)
+      || attachment.fileType.startsWith('audio/');
+    
+    const isDocument = !isImage && !isVideo && !isAudio;
+    
+    if (isImage) {
+      return (
+        <AttachmentPreview key={attachment.id}>
+          <Image 
+            src={attachment.filePath} 
+            alt={attachment.fileName} 
+            onClick={() => window.open(attachment.filePath, '_blank')}
+          />
+        </AttachmentPreview>
+      );
+    } else if (isVideo) {
+      return (
+        <AttachmentPreview key={attachment.id}>
+          <video 
+            controls
+            width="200"
+            height="auto"
+            src={attachment.filePath}
+          >
+            Your browser does not support the video tag.
+          </video>
+        </AttachmentPreview>
+      );
+    } else if (isAudio) {
+      return (
+        <AttachmentPreview key={attachment.id}>
+          <audio 
+            controls
+            src={attachment.filePath}
+          >
+            Your browser does not support the audio tag.
+          </audio>
+        </AttachmentPreview>
+      );
+    } else {
+      // For documents
+      return (
+        <AttachmentPreview key={attachment.id}>
+          <Document 
+            theme={theme}
+            onClick={() => window.open(attachment.filePath, '_blank')}
+          >
+            <DocumentIcon theme={theme}>
+              <i className="material-icons">insert_drive_file</i>
+            </DocumentIcon>
+            <DocumentInfo>
+              <DocumentName theme={theme}>{attachment.fileName}</DocumentName>
+              <DocumentSize theme={theme}>
+                {formatFileSize(attachment.fileSize)}
+              </DocumentSize>
+            </DocumentInfo>
+          </Document>
+        </AttachmentPreview>
+      );
+    }
   };
   
   // Render attachment preview

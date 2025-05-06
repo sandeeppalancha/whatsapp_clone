@@ -111,6 +111,8 @@ const Chat = () => {
   }, [id, conversationMessages, hasMarkedAsRead]);
   
   const handleSendMessage = useCallback((message, attachments = []) => {
+    console.log("handle send messgae", attachments);
+    
     if (!message.trim() && attachments.length === 0) return;
     
     // Generate a unique ID for this message

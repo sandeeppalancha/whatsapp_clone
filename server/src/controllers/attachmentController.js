@@ -1,11 +1,10 @@
 // server/src/controllers/attachmentController.js
-const fs = require('fs');
+const { Attachment, Message } = require('../db/models');
+const s3Service = require('../services/s3Service');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
-const { Attachment, Message } = require('../db/models');
-const crypto = require('crypto');
 
-// Helper to check file type
+// Helper to determine file type category
 const getFileType = (mimeType) => {
   if (mimeType.startsWith('image/')) return 'image';
   if (mimeType.startsWith('video/')) return 'video';
@@ -14,12 +13,6 @@ const getFileType = (mimeType) => {
   if (['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(mimeType)) return 'document';
   if (['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'].includes(mimeType)) return 'spreadsheet';
   return 'file';
-};
-
-// Generate a secure filename
-const generateSecureFilename = (originalName) => {
-  const fileExt = path.extname(originalName);
-  return `${uuidv4()}${fileExt}`;
 };
 
 /**
@@ -36,59 +29,33 @@ exports.uploadAttachment = async (req, res) => {
     const userId = req.user.id;
     const file = req.file;
     
-    // Check file size (limit to 50MB for example)
-    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
-    if (file.size > MAX_FILE_SIZE) {
-      return res.status(400).json({
-        message: 'File too large. Maximum file size is 50MB.'
-      });
-    }
+    // Upload file to S3
+    const uploadResult = await s3Service.uploadFile(
+      file.buffer,
+      file.originalname,
+      file.mimetype
+    );
+
+    console.log("Upload result", uploadResult);
     
-    // Create upload directory if it doesn't exist
-    const uploadDir = path.join(__dirname, '../../uploads');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    
-    // Create user-specific directory for better organization
-    const userDir = path.join(uploadDir, userId.toString());
-    if (!fs.existsSync(userDir)) {
-      fs.mkdirSync(userDir, { recursive: true });
-    }
-    
-    // Generate secure filename
-    const secureFilename = generateSecureFilename(file.originalname);
-    const filePath = path.join(userDir, secureFilename);
-    
-    // Calculate file hash for integrity checks
-    const fileHash = crypto.createHash('sha256').update(file.buffer).digest('hex');
-    
-    // Save file
-    fs.writeFileSync(filePath, file.buffer);
-    
-    // Determine file type for frontend display
-    const fileType = getFileType(file.mimetype);
     
     // Create database record
     const attachment = await Attachment.create({
       fileName: file.originalname,
       fileType: file.mimetype,
-      fileCategory: fileType, // Add this field to the model
       fileSize: file.size,
-      filePath: `/uploads/${userId}/${secureFilename}`, // Store path relative to API root
-      fileHash: fileHash,
-      uploadedBy: userId
+      filePath: uploadResult.fileUrl,
+      fileKey: uploadResult.fileKey,
+      uploadedBy: userId,
+      isTemporary: true // Mark as temporary until associated with a message
     });
     
     res.status(201).json({
       id: attachment.id,
       fileName: attachment.fileName,
       fileType: attachment.fileType,
-      fileCategory: fileType,
       fileSize: attachment.fileSize,
-      filePath: attachment.filePath,
-      fileHash: fileHash,
-      uploadedAt: attachment.createdAt
+      filePath: attachment.filePath
     });
   } catch (error) {
     console.error('Upload attachment error:', error);
@@ -134,10 +101,10 @@ exports.getAttachment = async (req, res) => {
         });
       }
       
-      // For group messages, check if user is in group (simplified - would need group membership check)
+      // For group messages, check if user is in group
+      // This would need a proper group membership check in a real app
       if (message.groupId) {
-        // This would need a proper check with group membership
-        // For now, assume access is allowed in this example
+        // Implement group membership check here
       }
     }
     
@@ -146,7 +113,7 @@ exports.getAttachment = async (req, res) => {
       id: attachment.id,
       fileName: attachment.fileName,
       fileType: attachment.fileType,
-      fileCategory: getFileType(attachment.fileType), // Calculate if field doesn't exist
+      fileCategory: getFileType(attachment.fileType),
       fileSize: attachment.fileSize,
       filePath: attachment.filePath,
       createdAt: attachment.createdAt
@@ -167,15 +134,7 @@ exports.deleteAttachment = async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
     
-    const attachment = await Attachment.findByPk(id, {
-      include: [
-        {
-          model: Message,
-          as: 'message',
-          attributes: ['id', 'senderId']
-        }
-      ]
-    });
+    const attachment = await Attachment.findByPk(id);
     
     if (!attachment) {
       return res.status(404).json({
@@ -183,18 +142,21 @@ exports.deleteAttachment = async (req, res) => {
       });
     }
     
-    // Check if user has permission (only uploader or message sender can delete)
-    if (attachment.uploadedBy !== userId && 
-        (!attachment.message || attachment.message.senderId !== userId)) {
-      return res.status(403).json({
-        message: 'You do not have permission to delete this attachment'
-      });
+    // Check ownership or message ownership
+    if (attachment.uploadedBy !== userId) {
+      // Check if the attachment is in a message owned by the user
+      const hasAccess = await checkAttachmentAccess(userId, id);
+      
+      if (!hasAccess) {
+        return res.status(403).json({
+          message: 'You do not have permission to delete this attachment'
+        });
+      }
     }
     
-    // Delete file from filesystem
-    const filePath = path.join(__dirname, '../..', attachment.filePath);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+    // Delete file from S3
+    if (attachment.fileKey) {
+      await s3Service.deleteFile(attachment.fileKey);
     }
     
     // Delete database record
@@ -210,3 +172,109 @@ exports.deleteAttachment = async (req, res) => {
     });
   }
 };
+
+/**
+ * Get pre-signed URL for direct browser upload to S3
+ */
+exports.getUploadUrl = async (req, res) => {
+  try {
+    const { fileName, fileType } = req.body;
+    
+    if (!fileName || !fileType) {
+      return res.status(400).json({
+        message: 'File name and type are required'
+      });
+    }
+    
+    const uploadData = s3Service.getPresignedUrl(fileName, fileType);
+    
+    res.json(uploadData);
+  } catch (error) {
+    console.error('Get upload URL error:', error);
+    res.status(500).json({
+      message: 'Server error while generating upload URL'
+    });
+  }
+};
+
+/**
+ * Register a file uploaded directly to S3 from the browser
+ */
+exports.registerAttachment = async (req, res) => {
+  try {
+    const { fileName, fileType, fileSize, filePath, fileKey } = req.body;
+    const userId = req.user.id;
+    
+    if (!fileName || !fileType || !fileSize || !filePath || !fileKey) {
+      return res.status(400).json({
+        message: 'Missing required attachment information'
+      });
+    }
+    
+    // Create database record
+    const attachment = await Attachment.create({
+      fileName,
+      fileType,
+      fileSize,
+      filePath,
+      fileKey,
+      uploadedBy: userId,
+      isTemporary: true
+    });
+    
+    res.status(201).json({
+      id: attachment.id,
+      fileName: attachment.fileName,
+      fileType: attachment.fileType,
+      fileSize: attachment.fileSize,
+      filePath: attachment.filePath
+    });
+  } catch (error) {
+    console.error('Register attachment error:', error);
+    res.status(500).json({
+      message: 'Server error while registering attachment'
+    });
+  }
+};
+
+/**
+ * Helper function to check if user has access to an attachment
+ */
+async function checkAttachmentAccess(userId, attachmentId) {
+  try {
+    // This is a placeholder for a proper check
+    // In a real application, you would check if the attachment belongs to a message sent by the user
+    // or a message in a conversation or group where the user is a participant
+    
+    // Example implementation:
+    const attachment = await Attachment.findByPk(attachmentId, {
+      include: [
+        {
+          model: Message,
+          as: 'message',
+          attributes: ['id', 'senderId', 'receiverId', 'groupId']
+        }
+      ]
+    });
+    
+    if (!attachment || !attachment.message) return false;
+    
+    const message = attachment.message;
+    
+    // Check if user is sender or receiver of the message
+    if (message.senderId === userId || message.receiverId === userId) {
+      return true;
+    }
+    
+    // For group messages, check if user is a member of the group
+    if (message.groupId) {
+      // In a real app, implement group membership check here
+      return true; // Simplification for this example
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('Check attachment access error:', error);
+    return false;
+  }
+}

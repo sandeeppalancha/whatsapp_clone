@@ -345,6 +345,8 @@ const handleError = (error) => {
  * Send a private message
  */
 export const sendPrivateMessage = (to, message, attachments = []) => {
+  console.log("SEND private message", to, message, attachments);
+  
   if (!socket || !isConnected) {
     console.error('Socket not connected');
     return false;
@@ -352,11 +354,20 @@ export const sendPrivateMessage = (to, message, attachments = []) => {
   
   const messageId = Math.random().toString(36).substr(2, 9);
   
+  // Make sure attachments are properly formatted for the socket
+  const formattedAttachments = attachments.map(att => ({
+    id: att.id,
+    fileName: att.fileName,
+    fileType: att.fileType,
+    fileSize: att.fileSize,
+    filePath: att.filePath
+  }));
+  
   socket.emit('private_message', {
     to,
     message,
     messageId,
-    attachments: attachments.map(att => ({ id: att.id }))
+    attachments: formattedAttachments
   });
   
   return messageId;

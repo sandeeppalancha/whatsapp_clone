@@ -27,6 +27,8 @@ app.use('/api', routes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
+  console.log("health");
+  
   res.status(200).json({ status: 'ok' });
 });
 

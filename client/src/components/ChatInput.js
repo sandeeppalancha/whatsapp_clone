@@ -112,11 +112,35 @@ const ChatInput = ({ onSendMessage, onTyping }) => {
   }, [onTyping]);
   
   // Handle send message
-  const handleSendMessage = useCallback(() => {
-    if (message.trim() || attachments.length > 0) {
-      if (onSendMessage) onSendMessage(message, attachments);
-      setMessage('');
-      setAttachments([]);
+  const handleSendMessage = useCallback(async () => {
+    try {
+      let messagesToSend = [];
+      
+      // First check if there are any pending file uploads
+      if (fileUploadRef.current && fileUploadRef.current.hasSelectedFiles) {
+        // Wait for file uploads to complete and get the uploaded attachments
+        const uploadedAttachments = await fileUploadRef.current.uploadAllFiles();
+        console.log("uploadedAttachments", uploadedAttachments);
+        
+        // Don't try to update the state - use the returned attachments directly
+        messagesToSend = [...attachments, ...uploadedAttachments];
+      } else {
+        // Just use the current attachments state if no new uploads
+        messagesToSend = attachments;
+      }
+      
+      // Now send the message with the attachments we just collected
+      if (message.trim() || messagesToSend.length > 0) {
+        console.log("inside chatinput's handlesend messgae", message, messagesToSend);
+        
+        if (onSendMessage) onSendMessage(message, messagesToSend);
+        
+        // Clear message and attachments after sending
+        setMessage('');
+        setAttachments([]);
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
     }
   }, [message, attachments, onSendMessage]);
   

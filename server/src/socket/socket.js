@@ -104,7 +104,7 @@ function configureSocket(server) {
         
         // Save message to database
         const newMessage = await Message.create({
-          content: message || '', // Allow empty content if there are attachments
+          content: message,
           senderId: from,
           receiverId: to,
           isRead: false
@@ -114,7 +114,10 @@ function configureSocket(server) {
         if (attachments && attachments.length > 0) {
           // Update attachment records to associate with this message
           await Attachment.update(
-            { messageId: newMessage.id },
+            { 
+              messageId: newMessage.id,
+              isTemporary: false 
+            },
             {
               where: {
                 id: attachments.map(att => att.id)
@@ -184,7 +187,8 @@ function configureSocket(server) {
         const { groupId, message, messageId, attachments = [] } = data;
         const from = socket.user.id;
         
-        if (!groupId || !message) {
+        // Validate parameters
+        if (!groupId || (!message && (!attachments || attachments.length === 0))) {
           socket.emit('error', { message: 'Invalid message parameters' });
           return;
         }
@@ -209,7 +213,7 @@ function configureSocket(server) {
         
         // Save message to database
         const newMessage = await Message.create({
-          content: message,
+          content: message || '', // Allow empty content if there are attachments
           senderId: from,
           groupId,
           isRead: false
@@ -265,13 +269,26 @@ function configureSocket(server) {
                   groupId,
                   from,
                   sender: messageWithDetails.sender,
-                  message,
+                  message: newMessage.content,
                   attachments: messageWithDetails.attachments,
                   timestamp: newMessage.createdAt
                 });
               } else {
                 // Send push notification to offline members
-                sendPushNotification(member.id, from, message, group.name, true);
+                // Include attachment info in the notification
+                const hasAttachments = messageWithDetails.attachments.length > 0;
+                const notificationMessage = hasAttachments 
+                  ? (message ? `${message} [Attachment]` : 'Sent an attachment')
+                  : message;
+                
+                sendPushNotification(
+                  member.id, 
+                  from, 
+                  notificationMessage, 
+                  group.name, 
+                  true,
+                  hasAttachments
+                );
               }
             }
           });
