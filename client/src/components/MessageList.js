@@ -2,12 +2,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { useSelector } from 'react-redux';
+import ImagePreview from './ImagePreview';
 
 const ListContainer = styled.div`
   flex: 1;
   padding: 20px;
   overflow-y: auto;
-  background-color: ${props => props.theme === 'dark' ? '#121212' : '#f5f5f5'};
+  // background-color: ${props => props.theme === 'dark' ? '#121212' : '#f5f5f5'};
+  background-color: ${props => props.theme === 'dark' ? '#121212' : '#eef9ea'};
   display: flex;
   flex-direction: column;
   height: 0; /* Add this to ensure flex growing works */
@@ -34,7 +36,8 @@ const MessageBubble = styled.div`
   padding-bottom: 15px; /* Make room for timestamp */
   
   ${props => props.isSent ? `
-    background-color: ${props.theme === 'dark' ? '#2a5885' : '#e3f2fd'};
+    // background-color: ${props.theme === 'dark' ? '#2a5885' : '#e3f2fd'};
+    background-color: ${props.theme === 'dark' ? '#2a5885' : '#bfe4ca'};
     color: ${props.theme === 'dark' ? '#fff' : '#333'};
     border-bottom-right-radius: 5px;
     margin-left: auto;
@@ -51,6 +54,18 @@ const SenderName = styled.div`
   margin-bottom: 5px;
   font-weight: bold;
   color: #4caf50;
+`;
+
+const ImagewPreview = styled.img`
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.2s;
+  
+  &:hover {
+    transform: scale(1.05);
+  }
 `;
 
 const MessageContent = styled.div`
@@ -140,6 +155,8 @@ const MessageList = ({ messages, currentUserId, isLoading, isGroup }) => {
   const { theme } = useSelector(state => state.ui);
   const messagesEndRef = useRef(null);
   const [processedMessages, setProcessedMessages] = useState([]);
+
+  const [previewImage, setPreviewImage] = useState(null);
   
   // Process and sort messages when the messages prop changes
   useEffect(() => {
@@ -237,15 +254,19 @@ const MessageList = ({ messages, currentUserId, isLoading, isGroup }) => {
     const isAudio = attachment.fileType && /\.(mp3|wav|ogg)$/i.test(attachment.fileName)
       || attachment.fileType.startsWith('audio/');
     
-    const isDocument = !isImage && !isVideo && !isAudio;
-    
+    const isDocument = !isImage && !isVideo && !isAudio;    
+
     if (isImage) {
       return (
         <AttachmentPreview key={attachment.id}>
           <Image 
             src={attachment.filePath} 
             alt={attachment.fileName} 
-            onClick={() => window.open(attachment.filePath, '_blank')}
+            // onClick={() => window.open(attachment.filePath, '_blank')}
+            onClick={() => setPreviewImage({
+              src: attachment.filePath,
+              name: attachment.fileName
+            })}
           />
         </AttachmentPreview>
       );
@@ -402,6 +423,13 @@ const MessageList = ({ messages, currentUserId, isLoading, isGroup }) => {
           })}
         </MessageGroup>
       ))}
+
+      {previewImage && (
+        <ImagePreview 
+          image={previewImage} 
+          onClose={() => setPreviewImage(null)} 
+        />
+      )}
       
       <div ref={messagesEndRef} />
     </ListContainer>

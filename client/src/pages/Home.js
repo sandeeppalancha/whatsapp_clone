@@ -26,6 +26,7 @@ const ChatsHeader = styled.div`
   background-color: ${props => props.theme === 'dark' ? '#1e1e1e' : '#f8f8f8'};
   border-bottom: 1px solid ${props => props.theme === 'dark' ? '#2a2a2a' : '#e0e0e0'};
   display: flex;
+  font-weight: bold;
   align-items: center;
   justify-content: space-between;
   position: sticky;
@@ -37,7 +38,7 @@ const HeaderTitle = styled.h1`
   font-size: 1.5rem;
   margin: 0;
   color: ${props => props.theme === 'dark' ? '#f5f5f5' : '#4caf50'};
-  font-weight: 600;
+  font-weight: bold;
 `;
 
 const ContentArea = styled.div`

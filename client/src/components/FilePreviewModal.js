@@ -47,8 +47,8 @@ const HeaderTitle = styled.div`
 const IconButton = styled.button`
   background: none;
   border: none;
-  width: 40px;
-  height: 40px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -91,7 +91,7 @@ const FilePreview = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px;
+  padding: 30px;
   text-align: center;
 `;
 

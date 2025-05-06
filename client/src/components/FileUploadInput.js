@@ -30,8 +30,8 @@ const FilePreview = styled.div`
 `;
 
 const FileIconContainer = styled.div`
-  width: 40px;
-  height: 40px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;

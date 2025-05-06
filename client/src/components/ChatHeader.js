@@ -17,8 +17,8 @@ const HeaderContainer = styled.div`
 const BackButton = styled.button`
   background: none;
   border: none;
-  width: 40px;
-  height: 40px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -37,7 +37,7 @@ const Avatar = styled.div`
   height: 40px;
   border-radius: 50%;
   background-color: ${props => props.theme === 'dark' ? '#555' : '#ddd'};
-  margin-right: 15px;
+  margin-right: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -71,8 +71,8 @@ const ActionButtons = styled.div`
 const IconButton = styled.button`
   background: none;
   border: none;
-  width: 40px;
-  height: 40px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
