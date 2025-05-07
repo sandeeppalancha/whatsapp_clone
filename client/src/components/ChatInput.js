@@ -1,26 +1,67 @@
-// client/src/components/ChatInput.js - Enhanced with file support
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+// Modified ChatInput.js component
+import React, { useState, useRef, useCallback } from 'react';
 import styled from 'styled-components';
 import { useSelector } from 'react-redux';
 import { Camera, Mic, Send, Paperclip, Smile, X } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
-import FileUploadInput from './FileUploadInput';
+import { Camera as CapacitorCamera } from '@capacitor/camera';
+import chatService from '../services/chatService';
 
 const InputContainer = styled.div`
   padding: 15px;
   background-color: ${props => props.theme === 'dark' ? '#1e1e1e' : '#f8f8f8'};
   border-top: 1px solid ${props => props.theme === 'dark' ? '#2a2a2a' : '#e0e0e0'};
   display: flex;
-  align-items: center;
-  position: sticky; /* Add this */
-  bottom: 0; /* Add this */
-  z-index: 10; /* Add this */
-  padding-bottom: env(safe-area-inset-bottom); /* Add this for notched phones */
+  flex-direction: column;
 `;
 
-const InputRow = styled.div`
+const AttachmentPreviewContainer = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+`;
+
+const AttachmentPreview = styled.div`
+  position: relative;
+  width: 70px;
+  height: 70px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid ${props => props.theme === 'dark' ? '#444' : '#ddd'};
+`;
+
+const PreviewImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+`;
+
+const RemoveButton = styled.button`
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
   display: flex;
   align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+  
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.7);
+  }
+`;
+
+const InputControls = styled.div`
+  display: flex;
+  align-items: center;
+  width: 100%;
 `;
 
 const MessageInput = styled.input`
@@ -41,8 +82,8 @@ const MessageInput = styled.input`
 const IconButton = styled.button`
   background: none;
   border: none;
-  width: 30px;
-  height: 30px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -60,54 +101,14 @@ const IconButton = styled.button`
   }
 `;
 
-const AttachmentPreview = styled.div`
-  margin: 5px;
-  padding: 8px;
-  background-color: ${props => props.theme === 'dark' ? '#333' : '#f0f0f0'};
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-`;
-
-const AttachmentName = styled.div`
-  font-size: 0.9em;
-  margin-left: 8px;
-  color: ${props => props.theme === 'dark' ? '#f5f5f5' : '#333'};
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-const AttachmentSize = styled.div`
-  font-size: 0.8em;
-  color: ${props => props.theme === 'dark' ? '#aaa' : '#777'};
-  margin: 0 8px;
-`;
-
-const RemoveButton = styled.button`
-  background: none;
-  border: none;
-  color: ${props => props.theme === 'dark' ? '#ccc' : '#666'};
-  cursor: pointer;
-  padding: 2px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  
-  &:hover {
-    color: ${props => props.theme === 'dark' ? '#fff' : '#333'};
-  }
-`;
-
 const ChatInput = ({ onSendMessage, onTyping }) => {
   const { theme } = useSelector(state => state.ui);
   const [message, setMessage] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   const [attachments, setAttachments] = useState([]);
   const isNative = Capacitor.isNativePlatform();
   
-  const fileUploadRef = useRef(null);
+  const fileInputRef = useRef(null);
   
   // Handle message change
   const handleMessageChange = useCallback((e) => {
@@ -116,35 +117,13 @@ const ChatInput = ({ onSendMessage, onTyping }) => {
   }, [onTyping]);
   
   // Handle send message
-  const handleSendMessage = useCallback(async () => {
-    try {
-      let messagesToSend = [];
+  const handleSendMessage = useCallback(() => {
+    if (message.trim() || attachments.length > 0) {
+      console.log("Attachments inside handlesendmessage", attachments);
       
-      // First check if there are any pending file uploads
-      if (fileUploadRef.current && fileUploadRef.current.hasSelectedFiles) {
-        // Wait for file uploads to complete and get the uploaded attachments
-        const uploadedAttachments = await fileUploadRef.current.uploadAllFiles();
-        console.log("uploadedAttachments", uploadedAttachments);
-        
-        // Don't try to update the state - use the returned attachments directly
-        messagesToSend = [...attachments, ...uploadedAttachments];
-      } else {
-        // Just use the current attachments state if no new uploads
-        messagesToSend = attachments;
-      }
-      
-      // Now send the message with the attachments we just collected
-      if (message.trim() || messagesToSend.length > 0) {
-        console.log("inside chatinput's handlesend messgae", message, messagesToSend);
-        
-        if (onSendMessage) onSendMessage(message, messagesToSend);
-        
-        // Clear message and attachments after sending
-        setMessage('');
-        setAttachments([]);
-      }
-    } catch (error) {
-      console.error('Error sending message:', error);
+      if (onSendMessage) onSendMessage(message, attachments);
+      setMessage('');
+      setAttachments([]);
     }
   }, [message, attachments, onSendMessage]);
   
@@ -156,66 +135,171 @@ const ChatInput = ({ onSendMessage, onTyping }) => {
     }
   }, [handleSendMessage]);
   
-  // Upload pending attachments before sending
-  useEffect(() => {
-    if (fileUploadRef.current && fileUploadRef.current.hasSelectedFiles) {
-      fileUploadRef.current.uploadAllFiles();
+  // Handle attachment selection from file picker
+  const handleFileSelect = useCallback((e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    const newAttachments = [...attachments];
+    
+    Array.from(files).forEach((file, index) => {
+      const reader = new FileReader();
+      
+      reader.onload = (event) => {
+        const preview = file.type.startsWith('image/') ? event.target.result : null;
+        
+        newAttachments.push({
+          id: Date.now() + index,
+          file,
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+          preview
+        });
+        
+        if (index === files.length - 1) {
+          setAttachments(newAttachments);
+        }
+      };
+      
+      if (file.type.startsWith('image/')) {
+        reader.readAsDataURL(file);
+      } else {
+        reader.readAsArrayBuffer(file);
+      }
+    });
+    
+    e.target.value = null;
+  }, [attachments]);
+
+  // Handle camera capture (for mobile)
+  const handleCameraCapture = useCallback(async () => {
+    if (!isNative) return;
+    
+    try {
+      setIsUploading(true);
+      
+      // Capture photo using Capacitor Camera API
+      const image = await CapacitorCamera.getPhoto({
+        quality: 90,
+        allowEditing: false,
+        resultType: 'base64',
+        source: 'CAMERA'
+      });
+      
+      // Create a proper dataUrl from the base64 string
+      const dataUrl = `data:image/${image.format};base64,${image.base64String}`;
+      
+      // Convert dataUrl to blob
+      const fetchResponse = await fetch(dataUrl);
+      const blob = await fetchResponse.blob();
+      
+      // Create a proper File object
+      const fileName = `photo_${Date.now()}.${image.format}`;
+      const fileType = `image/${image.format}`;
+      
+      const file = new File([blob], fileName, {
+        type: fileType,
+        lastModified: Date.now()
+      });
+      
+      console.log('Camera capture converted to File:', {
+        name: file.name,
+        type: file.type,
+        size: file.size
+      });
+      
+      // Upload the file using the chatService (same as FileUploadInput)
+      const response = await chatService.uploadAttachment(
+        file,
+        // Progress callback
+        (progressEvent) => {
+          const percentage = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          console.log(`Upload progress: ${percentage}%`);
+        }
+      );
+      
+      console.log("Camera upload response:", response);
+      
+      // Create attachment object using the server response
+      // This matches the format used in FileUploadInput
+      const attachmentInfo = {
+        id: response.data.id,
+        fileName: response.data.fileName,
+        fileType: response.data.fileType,
+        fileSize: response.data.fileSize,
+        filePath: response.data.filePath,
+        // Keep the preview for UI display
+        preview: dataUrl
+      };
+      
+      // Add to attachments state - now it's in the same format as file uploads
+      setAttachments(prev => [...prev, attachmentInfo]);
+      setIsUploading(false);
+    } catch (error) {
+      console.error('Error capturing and uploading image:', error);
+      setIsUploading(false);
     }
-  }, []);
-  
-  // Handle file selection from FileUploadInput
-  const handleFileSelected = useCallback((attachment) => {
-    setAttachments(prev => [...prev, attachment]);
-  }, []);
+  }, [isNative]);
   
   // Handle remove attachment
   const handleRemoveAttachment = useCallback((id) => {
     setAttachments(prev => prev.filter(attachment => attachment.id !== id));
   }, []);
   
-  // Format file size for display
-  const formatFileSize = (bytes) => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-  };
-  
   return (
     <InputContainer theme={theme}>
-      <FileUploadInput 
-        ref={fileUploadRef}
-        onFileSelected={handleFileSelected}
-        theme={theme}
-      />
-      
+      {/* Attachment preview area - separate from input controls */}
       {attachments.length > 0 && (
-        <div>
+        <AttachmentPreviewContainer>
           {attachments.map(attachment => (
             <AttachmentPreview key={attachment.id} theme={theme}>
-              <AttachmentName theme={theme}>{attachment.fileName}</AttachmentName>
-              <AttachmentSize theme={theme}>{formatFileSize(attachment.fileSize)}</AttachmentSize>
-              <RemoveButton 
-                theme={theme}
-                onClick={() => handleRemoveAttachment(attachment.id)}
-              >
-                <X size={18} />
+              {attachment.preview ? (
+                <PreviewImage src={attachment.preview} alt="Attachment" />
+              ) : (
+                <div style={{
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: theme === 'dark' ? '#333' : '#f0f0f0',
+                  color: theme === 'dark' ? '#ddd' : '#555'
+                }}>
+                  {attachment.fileName.split('.').pop().toUpperCase()}
+                </div>
+              )}
+              <RemoveButton onClick={() => handleRemoveAttachment(attachment.id)}>
+                <X size={12} />
               </RemoveButton>
             </AttachmentPreview>
           ))}
-        </div>
+        </AttachmentPreviewContainer>
       )}
       
-      <InputRow>
+      {/* Input controls */}
+      <InputControls>
+        <input
+          type="file"
+          ref={fileInputRef}
+          style={{ display: 'none' }}
+          onChange={handleFileSelect}
+          multiple
+        />
+        
         <IconButton 
-          onClick={() => fileUploadRef.current?.openFileSelector()} 
+          onClick={() => fileInputRef.current.click()}
           theme={theme}
         >
           <Paperclip size={24} />
         </IconButton>
         
         <IconButton 
-          onClick={() => fileUploadRef.current?.openFileSelector()} 
+          onClick={isNative ? handleCameraCapture : () => fileInputRef.current.click()}
           theme={theme}
+          disabled={isUploading}
         >
           <Camera size={24} />
         </IconButton>
@@ -244,7 +328,7 @@ const ChatInput = ({ onSendMessage, onTyping }) => {
         >
           <Send size={24} />
         </IconButton>
-      </InputRow>
+      </InputControls>
     </InputContainer>
   );
 };

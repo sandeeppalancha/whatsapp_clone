@@ -156,7 +156,10 @@ const MessageList = ({ messages, currentUserId, isLoading, isGroup }) => {
   const messagesEndRef = useRef(null);
   const [processedMessages, setProcessedMessages] = useState([]);
 
-  const [previewImage, setPreviewImage] = useState(null);
+  // const [previewImage, setPreviewImage] = useState(null);
+  const [previewImages, setPreviewImages] = useState([]);
+  const [previewIndex, setPreviewIndex] = useState(0);
+  const [showPreview, setShowPreview] = useState(false);
   
   // Process and sort messages when the messages prop changes
   useEffect(() => {
@@ -186,6 +189,28 @@ const MessageList = ({ messages, currentUserId, isLoading, isGroup }) => {
   const formatTime = (timestamp) => {
     if (!timestamp) return '';
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const collectImageAttachments = () => {
+    const images = [];
+    
+    if (!processedMessages || processedMessages.length === 0) return images;
+    
+    processedMessages.forEach(message => {
+      if (message.attachments && Array.isArray(message.attachments)) {
+        message.attachments.forEach(attachment => {
+          if (attachment.fileName && /\.(jpeg|jpg|gif|png)$/i.test(attachment.fileName)) {
+            images.push({
+              src: attachment.filePath,
+              name: attachment.fileName,
+              messageId: message.id
+            });
+          }
+        });
+      }
+    });
+    
+    return images;
   };
   
   // Format date
@@ -257,16 +282,23 @@ const MessageList = ({ messages, currentUserId, isLoading, isGroup }) => {
     const isDocument = !isImage && !isVideo && !isAudio;    
 
     if (isImage) {
+      // Get all images for preview
+      const allImages = collectImageAttachments();
+      // Find index of this image in all images
+      const imageIndex = allImages.findIndex(
+        img => img.src === attachment.filePath
+      );
+      
       return (
         <AttachmentPreview key={attachment.id}>
           <Image 
             src={attachment.filePath} 
             alt={attachment.fileName} 
-            // onClick={() => window.open(attachment.filePath, '_blank')}
-            onClick={() => setPreviewImage({
-              src: attachment.filePath,
-              name: attachment.fileName
-            })}
+            onClick={() => {
+              setPreviewImages(allImages);
+              setPreviewIndex(imageIndex);
+              setShowPreview(true);
+            }}
           />
         </AttachmentPreview>
       );
@@ -424,10 +456,11 @@ const MessageList = ({ messages, currentUserId, isLoading, isGroup }) => {
         </MessageGroup>
       ))}
 
-      {previewImage && (
+      {showPreview && previewImages.length > 0 && (
         <ImagePreview 
-          image={previewImage} 
-          onClose={() => setPreviewImage(null)} 
+          images={previewImages}
+          initialIndex={previewIndex}
+          onClose={() => setShowPreview(false)} 
         />
       )}
       

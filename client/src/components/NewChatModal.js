@@ -65,7 +65,7 @@ const CloseButton = styled.button`
 
 const SearchContainer = styled.div`
   position: relative;
-  padding: 15px;
+  padding: 10px 15px;
   border-bottom: 1px solid ${props => props.theme === 'dark' ? '#333' : '#eee'};
   width: 100%;
   box-sizing: border-box;
@@ -103,7 +103,7 @@ const UsersList = styled.div`
 const UserItem = styled.div`
   display: flex;
   align-items: center;
-  padding: 15px;
+  padding: 8px 15px;
   cursor: pointer;
   border-bottom: 1px solid ${props => props.theme === 'dark' ? '#333' : '#eee'};
   

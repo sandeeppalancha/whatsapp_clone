@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Capacitor } from '@capacitor/core';
 import styled from 'styled-components';
+import { Camera } from '@capacitor/camera';
 
 // Import pages
 import Login from './pages/Login';
@@ -115,6 +116,9 @@ useEffect(() => {
           try {
             await initializePushNotifications();
             console.log('Push notifications initialized successfully');
+
+            // Request camera permissions
+            await Camera.requestPermissions();
           } catch (error) {
             console.error('Failed to initialize push notifications:', error);
             // Continue app execution even if push notifications fail
