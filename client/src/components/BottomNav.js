@@ -1,8 +1,8 @@
-// client/src/components/BottomNav.js
+// client/src/components/BottomNav.js - Updated with WhatsApp-like styling for selected items
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
-import { User, MessageSquare, Settings } from 'lucide-react';
+import { User, Settings, MessageCircle, MessageSquareText } from 'lucide-react';
 
 const NavContainer = styled.div`
   position: fixed;
@@ -16,6 +16,7 @@ const NavContainer = styled.div`
   justify-content: space-around;
   align-items: center;
   z-index: 1000;
+  padding-top:10px;
 `;
 
 const NavItem = styled.div`
@@ -26,23 +27,42 @@ const NavItem = styled.div`
   flex: 1;
   height: 100%;
   cursor: pointer;
+  position: relative;
   color: ${props => 
     props.active 
-      ? props.theme === 'dark' ? '#4caf50' : '#4caf50' 
+      ? props.theme === 'dark' ? '#128C7E' : '#383838' 
       : props.theme === 'dark' ? '#aaa' : '#666'
   };
   
   &:hover {
-    color: ${props => props.theme === 'dark' ? '#4caf50' : '#4caf50'};
+    color: ${props => props.theme === 'dark' ? '#128C7E' : '#383838'};
   }
 `;
 
 const IconWrapper = styled.div`
   margin-bottom: 4px;
+  position: relative;
+  z-index: 2;
+`;
+
+const GreenHalo = styled.div`
+  position: absolute;
+  top: 0px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 56px;
+  height: 36px;
+  border-radius: 36%;
+  background-color: rgba(18, 140, 126, 0.2); /* Light green halo with transparency */
+  z-index: 1;
+  display: ${props => props.active ? 'block' : 'none'};
 `;
 
 const Label = styled.div`
   font-size: 12px;
+  font-weight: ${props => props.active ? 'bold' : 'normal'};
+  position: relative;
+  z-index: 2;
 `;
 
 const BottomNav = ({ theme }) => {
@@ -63,10 +83,14 @@ const BottomNav = ({ theme }) => {
         active={isActive('/profile')}
         theme={theme}
       >
+        <GreenHalo active={isActive('/profile')} />
         <IconWrapper>
-          <User size={24} />
+          {isActive('/profile') 
+            ? <User size={24} />  // strokeWidth={2.5} fill="#128C7E" stroke="#128C7E" 
+            : <User size={24} />
+          }
         </IconWrapper>
-        <Label>Profile</Label>
+        <Label active={isActive('/profile')}>Profile</Label>
       </NavItem>
       
       <NavItem 
@@ -74,10 +98,14 @@ const BottomNav = ({ theme }) => {
         active={isActive('/')}
         theme={theme}
       >
+        <GreenHalo active={isActive('/')} />
         <IconWrapper>
-          <MessageSquare size={24} />
+          {isActive('/') 
+            ? <MessageSquareText size={24}  />  // strokeWidth={2.5} fill="#128C7E" stroke="#128C7E"
+            : <MessageSquareText size={24} />
+          }
         </IconWrapper>
-        <Label>Chats</Label>
+        <Label active={isActive('/')}>Chats</Label>
       </NavItem>
       
       <NavItem 
@@ -85,10 +113,14 @@ const BottomNav = ({ theme }) => {
         active={isActive('/settings')}
         theme={theme}
       >
+        <GreenHalo active={isActive('/settings')} />
         <IconWrapper>
-          <Settings size={24} />
+          {isActive('/settings')
+            ? <Settings size={24} /> // strokeWidth={2.5} fill="#128C7E" stroke="#128C7E"
+            : <Settings size={24} />
+          }
         </IconWrapper>
-        <Label>Settings</Label>
+        <Label active={isActive('/settings')}>Settings</Label>
       </NavItem>
     </NavContainer>
   );

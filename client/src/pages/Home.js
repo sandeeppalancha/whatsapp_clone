@@ -1,9 +1,9 @@
-// client/src/pages/Home.js
+// client/src/pages/Home.js - Updated with WhatsApp-like styling
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { Plus, UserPlus, Users } from 'lucide-react';
+import { Plus, UserPlus, Users, MessageCircle, MoreVertical, Search, MessageSquarePlus } from 'lucide-react';
 
 // Import components
 import ConversationList from '../components/ConversationList';
@@ -20,33 +20,46 @@ const HomeContainer = styled.div`
   width: 100%;
 `;
 
-// Add a header component for the chats list
-const ChatsHeader = styled.div`
-  padding: 15px 20px;
-  background-color: ${props => props.theme === 'dark' ? '#1e1e1e' : '#f8f8f8'};
-  border-bottom: 1px solid ${props => props.theme === 'dark' ? '#2a2a2a' : '#e0e0e0'};
-  display: flex;
-  font-weight: bold;
-  align-items: center;
-  justify-content: space-between;
+const HeaderContainer = styled.div`
   position: sticky;
   top: 0;
   z-index: 10;
+  // background-color: ${props => props.theme === 'dark' ? '#1e1e1e' : '#075E54'};
+  padding: 10px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 `;
 
 const HeaderTitle = styled.h1`
   font-size: 1.5rem;
   margin: 0;
-  color: ${props => props.theme === 'dark' ? '#f5f5f5' : '#4caf50'};
+  color: ${props => props.theme === 'dark' ? '#f5f5f5' : '#128c7e'};
   font-weight: bold;
 `;
 
-const ContentArea = styled.div`
+const HeaderActions = styled.div`
+  display: flex;
+  align-items: center;
+`;
+
+const IconButton = styled.button`
+  background: none;
+  border: none;
+  color: ${props => props.theme === 'dark' ? '#f5f5f5' : '#706b6b'};
+  margin-left: 24px;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const ContentContainer = styled.div`
+  flex: 1;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  flex: 1;
-  height: 100%;
-  overflow: hidden;
 `;
 
 const FloatingActionButton = styled.button`
@@ -55,8 +68,8 @@ const FloatingActionButton = styled.button`
   right: 20px;
   width: 56px;
   height: 56px;
-  border-radius: 50%;
-  background-color: #4caf50;
+  border-radius: 12px; /* Rounded square like WhatsApp */
+  background-color: #128c7e; /* WhatsApp green color */
   color: white;
   display: flex;
   align-items: center;
@@ -67,14 +80,14 @@ const FloatingActionButton = styled.button`
   z-index: 100;
   
   &:hover {
-    background-color: #3e8e41;
+    background-color: #075E54;
   }
 `;
 
 const ActionMenu = styled.div`
   position: absolute;
-  bottom: 110px; // Changed from 65px to 70px for more space
-  right: 20px; // Added right positioning to align with FAB
+  bottom: 110px;
+  right: 20px;
   background-color: ${props => props.theme === 'dark' ? '#1e1e1e' : '#fff'};
   border-radius: 8px;
   box-shadow: 0px 2px 12px rgba(0, 0, 0, 0.45);
@@ -140,6 +153,11 @@ const Home = () => {
     setShowCreateGroupModal(true);
   };
   
+  const handleMoreOptions = () => {
+    // Placeholder for more options menu
+    console.log('More options clicked');
+  };
+  
   const handleGroupCreated = (group) => {
     // Add the newly created group to the conversations list
     dispatch(addConversation({
@@ -159,22 +177,25 @@ const Home = () => {
   
   return (
     <HomeContainer>
-      <ContentArea>
-        {/* Add the new header */}
-        <ChatsHeader theme={theme}>
-          <HeaderTitle theme={theme}>Chats</HeaderTitle>
-        </ChatsHeader>
+      <ContentContainer>
+        <HeaderContainer theme={theme}>
+          <HeaderTitle theme={theme}>Synapse</HeaderTitle>
+          <HeaderActions>
+            <IconButton theme={theme} onClick={handleMoreOptions}>
+              <MoreVertical size={24} />
+            </IconButton>
+          </HeaderActions>
+        </HeaderContainer>
         
-        {/* Conversation list remains the same */}
         <ConversationList 
           conversations={conversations}
           isLoading={isLoading}
           onConversationClick={handleConversationClick}
         />
-      </ContentArea>
+      </ContentContainer>
       
       <FloatingActionButton onClick={toggleMenu}>
-        <Plus size={24} />
+        <MessageSquarePlus size={24} />
       </FloatingActionButton>
       
       {showMenu && (

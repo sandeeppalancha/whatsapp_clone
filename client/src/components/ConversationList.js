@@ -1,7 +1,8 @@
-// client/src/components/ConversationList.js
+// client/src/components/ConversationList.js - Updated with title and timestamp aligned
 import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
 import styled from 'styled-components';
+import { Plus, UserPlus, Users, MessageCircle, MoreVertical, Search } from 'lucide-react';
 
 const ListContainer = styled.div`
   width: 100%;
@@ -10,30 +11,8 @@ const ListContainer = styled.div`
   overflow-y: auto;
 `;
 
-const SearchBar = styled.div`
-  padding: 15px;
-  border-bottom: 1px solid ${props => props.theme === 'dark' ? '#2a2a2a' : '#e0e0e0'};
-  width: 100%;
-  box-sizing: border-box;
-`;
-
-const SearchInput = styled.input`
-  width: 100%;
-  padding: 10px 15px;
-  border-radius: 20px;
-  border: 1px solid ${props => props.theme === 'dark' ? '#333' : '#e0e0e0'};
-  background-color: ${props => props.theme === 'dark' ? '#333' : '#fff'};
-  color: ${props => props.theme === 'dark' ? '#f5f5f5' : '#333'};
-  box-sizing: border-box;
-  
-  &:focus {
-    outline: none;
-    border-color: ${props => props.theme === 'dark' ? '#555' : '#ccc'};
-  }
-`;
-
 const ConversationItem = styled.div`
-  padding: 15px;
+  padding: 10px 15px; /* Reduced padding to make items more compact */
   display: flex;
   align-items: center;
   border-bottom: 1px solid ${props => props.theme === 'dark' ? '#2a2a2a' : '#e0e0e0'};
@@ -49,8 +28,8 @@ const ConversationItem = styled.div`
 `;
 
 const Avatar = styled.div`
-  width: 50px;
-  height: 50px;
+  width: 45px; /* Slightly smaller avatar */
+  height: 45px;
   border-radius: 50%;
   background-color: ${props => props.theme === 'dark' ? '#555' : '#ddd'};
   margin-right: 15px;
@@ -68,45 +47,87 @@ const AvatarImage = styled.img`
 
 const ConversationInfo = styled.div`
   flex: 1;
+  min-width: 0; /* Allows text truncation to work properly */
+`;
+
+const TopRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline; /* This aligns items by their baseline - perfect for text alignment */
+  margin-bottom: 3px; /* Reduced margin */
+  width: 100%;
 `;
 
 const ConversationName = styled.div`
   font-weight: bold;
-  margin-bottom: 5px;
   color: ${props => props.theme === 'dark' ? '#f5f5f5' : '#333'};
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  padding-right: 15px; /* Space for timestamp */
+`;
+
+const Timestamp = styled.div`
+  font-size: 0.75em; /* Smaller timestamp */
+  color: ${props => props.theme === 'dark' ? '#aaa' : '#777'};
+  white-space: nowrap;
+`;
+
+const SearchBarContainer = styled.div`
+  padding: 8px 12px;
+  background-color: ${props => props.theme === 'dark' ? '#1e1e1e' : '#FFFFFF'};
+`;
+
+const SearchBar = styled.div`
+  display: flex;
+  align-items: center;
+  background-color: ${props => props.theme === 'dark' ? '#2a2a2a' : '#F0F2F5'};
+  border-radius: 18px;
+  padding: 0 12px;
+  height: 36px;
+`;
+
+const SearchInput = styled.input`
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  padding: 8px;
+  color: ${props => props.theme === 'dark' ? '#f5f5f5' : '#333'};
+  font-size: 0.9rem;
+  
+  &::placeholder {
+    color: ${props => props.theme === 'dark' ? '#aaa' : '#919191'};
+  }
 `;
 
 const LastMessage = styled.div`
-  font-size: 0.9em;
+  font-size: 0.85em; /* Slightly smaller text */
   color: ${props => props.theme === 'dark' ? '#aaa' : '#777'};
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 180px;
+  width: 100%;
 `;
 
 const MetaInfo = styled.div`
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-`;
-
-const Timestamp = styled.div`
-  font-size: 0.8em;
-  color: ${props => props.theme === 'dark' ? '#aaa' : '#777'};
-  margin-bottom: 5px;
+  justify-content: center;
+  margin-left: 5px;
 `;
 
 const UnreadBadge = styled.div`
-  background-color: #4caf50;
+  background-color: #128C7E; /* WhatsApp green */
   color: white;
   border-radius: 50%;
-  width: 20px;
-  height: 20px;
+  min-width: 18px;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.8em;
+  font-size: 0.7em;
+  padding: 0 4px;
 `;
 
 const LoadingIndicator = styled.div`
@@ -135,6 +156,7 @@ const ConversationList = ({ conversations, isLoading, onConversationClick }) => 
   
   // Format timestamp
   const formatTime = (timestamp) => {
+    if (!timestamp) return '';
     const date = new Date(timestamp);
     const now = new Date();
     
@@ -151,7 +173,7 @@ const ConversationList = ({ conversations, isLoading, onConversationClick }) => 
     }
     
     // Otherwise show date
-    return date.toLocaleDateString();
+    return date.toLocaleDateString([], { day: 'numeric', month: 'numeric' });
   };
   
   // Truncate message
@@ -163,15 +185,19 @@ const ConversationList = ({ conversations, isLoading, onConversationClick }) => 
   
   return (
     <ListContainer theme={theme}>
-      <SearchBar theme={theme}>
-        <SearchInput 
-          type="text"
-          placeholder="Search conversations..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          theme={theme}
-        />
-      </SearchBar>
+
+      <SearchBarContainer theme={theme}>
+        <SearchBar theme={theme}>
+          <Search size={18} color={theme === 'dark' ? '#aaa' : '#919191'} />
+          <SearchInput 
+            type="text"
+            placeholder="Search conversations..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            theme={theme}
+          />
+        </SearchBar>
+      </SearchBarContainer>
       
       {isLoading ? (
         <LoadingIndicator theme={theme}>Loading conversations...</LoadingIndicator>
@@ -209,12 +235,14 @@ const ConversationList = ({ conversations, isLoading, onConversationClick }) => 
               </Avatar>
               
               <ConversationInfo>
-                <ConversationName theme={theme}>{name}</ConversationName>
+                <TopRow>
+                  <ConversationName theme={theme}>{name}</ConversationName>
+                  <Timestamp theme={theme}>{formatTime(timestamp)}</Timestamp>
+                </TopRow>
                 <LastMessage theme={theme}>{truncateMessage(lastMessage)}</LastMessage>
               </ConversationInfo>
               
               <MetaInfo>
-                <Timestamp theme={theme}>{formatTime(timestamp)}</Timestamp>
                 {unreadCount > 0 && <UnreadBadge>{unreadCount}</UnreadBadge>}
               </MetaInfo>
             </ConversationItem>

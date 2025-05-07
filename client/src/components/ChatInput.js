@@ -9,7 +9,7 @@ import chatService from '../services/chatService';
 
 const InputContainer = styled.div`
   padding: 15px;
-  background-color: ${props => props.theme === 'dark' ? '#1e1e1e' : '#f8f8f8'};
+  background-color: ${props => props.theme === 'dark' ? '#1e1e1e' : '#e8e8e8'};
   border-top: 1px solid ${props => props.theme === 'dark' ? '#2a2a2a' : '#e0e0e0'};
   display: flex;
   flex-direction: column;
@@ -289,7 +289,7 @@ const ChatInput = ({ onSendMessage, onTyping }) => {
           multiple
         />
         
-        <IconButton 
+        {/* <IconButton 
           onClick={() => fileInputRef.current.click()}
           theme={theme}
         >
@@ -302,7 +302,7 @@ const ChatInput = ({ onSendMessage, onTyping }) => {
           disabled={isUploading}
         >
           <Camera size={24} />
-        </IconButton>
+        </IconButton> */}
         
         <MessageInput
           type="text"
@@ -313,13 +313,13 @@ const ChatInput = ({ onSendMessage, onTyping }) => {
           theme={theme}
         />
         
-        <IconButton theme={theme}>
+        {/* <IconButton theme={theme}>
           <Smile size={24} />
-        </IconButton>
+        </IconButton> */}
         
-        <IconButton theme={theme}>
+        {/* <IconButton theme={theme}>
           <Mic size={24} />
-        </IconButton>
+        </IconButton> */}
         
         <IconButton 
           onClick={handleSendMessage} 

@@ -9,7 +9,7 @@ const ListContainer = styled.div`
   padding: 20px;
   overflow-y: auto;
   // background-color: ${props => props.theme === 'dark' ? '#121212' : '#f5f5f5'};
-  background-color: ${props => props.theme === 'dark' ? '#121212' : '#eef9ea'};
+  background-color: ${props => props.theme === 'dark' ? '#121212' : '#ece5dda1'};
   display: flex;
   flex-direction: column;
   height: 0; /* Add this to ensure flex growing works */
@@ -21,13 +21,19 @@ const MessageGroup = styled.div`
 
 const MessageDate = styled.div`
   text-align: center;
-  margin: 20px 0;
+  margin: 16px auto;
   color: ${props => props.theme === 'dark' ? '#aaa' : '#777'};
   font-size: 0.9em;
+  background: #f5f5f5;
+  padding: 8px 10px;
+  width: fit-content;
+  border-radius: 10px;
+  font-weight: 500;
 `;
 
 const MessageBubble = styled.div`
   max-width: 70%;
+  width: fit-content;
   padding: 12px 15px;
   border-radius: 18px;
   margin-bottom: 10px;
@@ -37,7 +43,7 @@ const MessageBubble = styled.div`
   
   ${props => props.isSent ? `
     // background-color: ${props.theme === 'dark' ? '#2a5885' : '#e3f2fd'};
-    background-color: ${props.theme === 'dark' ? '#2a5885' : '#bfe4ca'};
+    background-color: ${props.theme === 'dark' ? '#2a5885' : 'rgb(217, 253, 211)'};
     color: ${props.theme === 'dark' ? '#fff' : '#333'};
     border-bottom-right-radius: 5px;
     margin-left: auto;
@@ -69,7 +75,7 @@ const ImagewPreview = styled.img`
 `;
 
 const MessageContent = styled.div`
-  margin-right: 35px; /* Space for timestamp */
+  margin-right: 60px; /* Space for timestamp */
 `;
 
 const MessageTime = styled.div`
@@ -233,7 +239,11 @@ const MessageList = ({ messages, currentUserId, isLoading, isGroup }) => {
     }
     
     // Otherwise show full date
-    return date.toLocaleDateString();
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
   };
   
   // Group messages by date
@@ -463,7 +473,7 @@ const MessageList = ({ messages, currentUserId, isLoading, isGroup }) => {
           onClose={() => setShowPreview(false)} 
         />
       )}
-      
+
       <div ref={messagesEndRef} />
     </ListContainer>
   );
