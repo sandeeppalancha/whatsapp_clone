@@ -150,7 +150,7 @@ const Login = () => {
     <LoginContainer theme={theme}>
       <Logo>
         <MessageSquare size={40} color="#128C7E" />
-        <LogoText theme={theme}>ChatUp</LogoText>
+        <LogoText theme={theme}>Synapse</LogoText>
       </Logo>
       
       <FormContainer>

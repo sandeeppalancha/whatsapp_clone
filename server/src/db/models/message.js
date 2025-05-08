@@ -3,26 +3,35 @@ const { Model } = require('sequelize');
 
 module.exports = (sequelize, DataTypes) => {
   class Message extends Model {
+    /**
+     * Helper method for defining associations.
+     * This method is not a part of Sequelize lifecycle.
+     * The `models/index` file will call this method automatically.
+     */
     static associate(models) {
-      Message.belongsTo(models.User, { 
+      // Define associations
+      Message.belongsTo(models.User, {
         foreignKey: 'senderId',
         as: 'sender'
       });
-      Message.belongsTo(models.User, { 
+      
+      Message.belongsTo(models.User, {
         foreignKey: 'receiverId',
         as: 'receiver'
       });
-      Message.belongsTo(models.Group, { 
+      
+      Message.belongsTo(models.Group, {
         foreignKey: 'groupId',
         as: 'group'
       });
+      
       Message.hasMany(models.Attachment, {
         foreignKey: 'messageId',
         as: 'attachments'
       });
     }
   }
-  
+
   Message.init({
     content: {
       type: DataTypes.TEXT,
@@ -54,16 +63,31 @@ module.exports = (sequelize, DataTypes) => {
     },
     isRead: {
       type: DataTypes.BOOLEAN,
-      defaultValue: false
+      defaultValue: false,
+      allowNull: false
     },
     readAt: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+    // New fields for WhatsApp-like ticks
+    isDelivered: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false
+    },
+    deliveredAt: {
       type: DataTypes.DATE,
       allowNull: true
     }
   }, {
     sequelize,
     modelName: 'Message',
+    tableName: 'Messages',
+    timestamps: true,
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
   });
-  
+
   return Message;
 };

@@ -1,4 +1,4 @@
-// client/src/redux/slices/chatSlice.js
+// client/src/redux/slices/chatSlice.js - Enhanced for tick status
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import chatService from '../../services/chatService';
 
@@ -137,15 +137,21 @@ const chatSlice = createSlice({
       }
     },
     updateMessageStatus: (state, action) => {
-      const { clientMessageId, messageId, status } = action.payload;
+      // Enhanced to handle all message status updates
+      const { clientMessageId, messageId, status, readAt, deliveredAt, readBy, deliveredTo } = action.payload;
       
       // Update message status in appropriate conversation
       for (const key in state.messages) {
         const messageIndex = state.messages[key].findIndex(
-          msg => msg.clientMessageId === clientMessageId || msg.id === messageId
+          msg => {
+            if (messageId && msg.id === messageId) return true;
+            if (clientMessageId && msg.clientMessageId === clientMessageId) return true;
+            return false;
+          }
         );
         
         if (messageIndex !== -1) {
+          // Update status
           state.messages[key][messageIndex].status = status;
           
           // If server returned an ID, update it
@@ -153,14 +159,45 @@ const chatSlice = createSlice({
             state.messages[key][messageIndex].id = messageId;
           }
           
+          // Add timing information
+          if (readAt) {
+            state.messages[key][messageIndex].readAt = readAt;
+          }
+          
+          if (deliveredAt) {
+            state.messages[key][messageIndex].deliveredAt = deliveredAt;
+          }
+          
+          // Add user info
+          if (readBy) {
+            state.messages[key][messageIndex].readBy = readBy;
+          }
+          
+          if (deliveredTo) {
+            state.messages[key][messageIndex].deliveredTo = deliveredTo;
+          }
+          
+          // Set isRead flag for compatibility with existing code
+          if (status === 'read') {
+            state.messages[key][messageIndex].isRead = true;
+          }
+          
           break;
         }
       }
     },
     
-    // New reducers
+    // Simplified markMessageAsRead - now using updateMessageStatus for consistency
     markMessageAsRead: (state, action) => {
       const { messageId, readBy, readAt } = action.payload;
+      
+      // Call updateMessageStatus with the read information
+      const statusUpdate = {
+        messageId,
+        status: 'read',
+        readBy,
+        readAt
+      };
       
       // Find message in all conversations
       for (const key in state.messages) {
@@ -309,6 +346,7 @@ const chatSlice = createSlice({
           if (messageIndex !== -1) {
             state.messages[key][messageIndex].isRead = true;
             state.messages[key][messageIndex].readAt = readAt;
+            state.messages[key][messageIndex].status = 'read';
             break;
           }
         }

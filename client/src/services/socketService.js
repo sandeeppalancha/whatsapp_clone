@@ -1,4 +1,4 @@
-// client/src/services/socketService.js
+// client/src/services/socketService.js - Enhanced with delivery confirmations
 import { io } from 'socket.io-client';
 import { store } from '../redux/store';
 import { 
@@ -64,6 +64,7 @@ const setupSocketEventListeners = () => {
   socket.on('private_message', handlePrivateMessage);
   socket.on('group_message', handleGroupMessage);
   socket.on('message_ack', handleMessageAck);
+  socket.on('message_delivered', handleMessageDelivered);
   socket.on('read_receipt', handleReadReceipt);
 
   // Status events
@@ -154,6 +155,9 @@ const handlePrivateMessage = (data) => {
     })
   );
   
+  // Immediately confirm delivery to sender
+  sendDeliveryConfirmation(id);
+  
   // Create notification if not in the active conversation
   const activeConversation = store.getState().chat.activeConversation;
   if (!activeConversation || 
@@ -206,6 +210,9 @@ const handleGroupMessage = (data) => {
     })
   );
   
+  // Immediately confirm delivery to sender
+  sendDeliveryConfirmation(id);
+  
   // Create notification if not in the active conversation
   const activeConversation = store.getState().chat.activeConversation;
   if (!activeConversation || 
@@ -239,7 +246,7 @@ const handleGroupMessage = (data) => {
 };
 
 /**
- * Handle message acknowledgement
+ * Handle message acknowledgement (sent)
  */
 const handleMessageAck = (data) => {
   const { clientMessageId, messageId, status } = data;
@@ -254,16 +261,33 @@ const handleMessageAck = (data) => {
 };
 
 /**
+ * Handle message delivery confirmation
+ */
+const handleMessageDelivered = (data) => {
+  const { messageId, deliveredTo, timestamp } = data;
+  
+  store.dispatch(
+    updateMessageStatus({
+      messageId,
+      status: 'delivered',
+      deliveredAt: timestamp,
+      deliveredTo
+    })
+  );
+};
+
+/**
  * Handle read receipt
  */
 const handleReadReceipt = (data) => {
   const { messageId, readBy, timestamp } = data;
   
   store.dispatch(
-    markMessageAsRead({
+    updateMessageStatus({
       messageId,
-      readBy,
-      readAt: timestamp
+      status: 'read',
+      readAt: timestamp,
+      readBy
     })
   );
 };
@@ -395,6 +419,17 @@ export const sendGroupMessage = (groupId, message, attachments = []) => {
 };
 
 /**
+ * Send delivery confirmation for a message
+ */
+export const sendDeliveryConfirmation = (messageId) => {
+  if (!socket || !isConnected || !messageId) {
+    return;
+  }
+  
+  socket.emit('message_delivered', { messageId });
+};
+
+/**
  * Send read receipt for a message
  */
 export const sendReadReceipt = (messageId) => {
@@ -458,6 +493,7 @@ export default {
   initializeSocket,
   sendPrivateMessage,
   sendGroupMessage,
+  sendDeliveryConfirmation,
   sendReadReceipt,
   sendGroupRead,
   sendTypingIndicator,

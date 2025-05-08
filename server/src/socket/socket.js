@@ -1,11 +1,11 @@
-// server/src/socket/socket.js
+// server/src/socket/socket.js - Complete implementation with delivery confirmation
 const socketIO = require('socket.io');
 const jwt = require('jsonwebtoken');
 const { User, Message, Group, Attachment } = require('../db/models');
 const { Op } = require('sequelize');
 
- // Keep track of online users
- const onlineUsers = new Map();
+// Keep track of online users
+const onlineUsers = new Map();
  
 function configureSocket(server) {
   const io = socketIO(server, {
@@ -67,6 +67,9 @@ function configureSocket(server) {
       
       // Notify contacts that user is online
       notifyUserStatus(io, userId, 'online');
+      
+      // Update delivery status for pending messages when user comes online
+      updatePendingMessagesDeliveryStatus(io, userId);
     }
 
     // User authentication
@@ -82,6 +85,9 @@ function configureSocket(server) {
         
         // Notify contacts that user is online
         notifyUserStatus(io, userId, 'online');
+        
+        // Update delivery status for pending messages when user comes online
+        updatePendingMessagesDeliveryStatus(io, userId);
         
         console.log(`User ${userId} authenticated`);
       } catch (error) {
@@ -107,7 +113,8 @@ function configureSocket(server) {
           content: message,
           senderId: from,
           receiverId: to,
-          isRead: false
+          isRead: false,
+          isDelivered: false // Add this field to track delivery status
         });
         
         // Process attachments if any
@@ -146,6 +153,11 @@ function configureSocket(server) {
             attachments: messageWithAttachments.attachments,
             timestamp: newMessage.createdAt
           });
+          
+          // Mark as delivered immediately since recipient is online
+          newMessage.isDelivered = true;
+          newMessage.deliveredAt = new Date();
+          await newMessage.save();
         }
         
         // Emit to sender with the message ID
@@ -154,6 +166,15 @@ function configureSocket(server) {
           messageId: newMessage.id, 
           status: 'sent' 
         });
+        
+        // If recipient is online, also send delivery confirmation
+        if (recipientSocketId) {
+          socket.emit('message_delivered', {
+            messageId: newMessage.id,
+            deliveredTo: parseInt(to),
+            timestamp: newMessage.deliveredAt
+          });
+        }
         
         // Send push notification if recipient is offline
         if (!recipientSocketId) {
@@ -216,7 +237,8 @@ function configureSocket(server) {
           content: message || '', // Allow empty content if there are attachments
           senderId: from,
           groupId,
-          isRead: false
+          isRead: false,
+          isDelivered: false // Track delivery status
         });
         
         // Process attachments if any
@@ -257,6 +279,9 @@ function configureSocket(server) {
           ]
         });
         
+        // Track online members for delivery status
+        const onlineMembers = [];
+        
         // Emit to all group members who are online
         if (fullGroup && fullGroup.members) {
           fullGroup.members.forEach(member => {
@@ -264,6 +289,9 @@ function configureSocket(server) {
             if (member.id !== from) {
               const memberSocketId = onlineUsers.get(member.id);
               if (memberSocketId) {
+                // Add to online members list
+                onlineMembers.push(member.id);
+                
                 io.to(memberSocketId).emit('group_message', {
                   id: newMessage.id,
                   groupId,
@@ -294,18 +322,78 @@ function configureSocket(server) {
           });
         }
         
+        // Track delivery status for online members
+        if (onlineMembers.length > 0) {
+          // Create group message delivery records
+          await Promise.all(onlineMembers.map(memberId => {
+            return createGroupMessageDelivery(newMessage.id, memberId);
+          }));
+          
+          // Update message as delivered to some members
+          newMessage.isDelivered = true;
+          newMessage.deliveredAt = new Date();
+          await newMessage.save();
+        }
+        
         // Acknowledge message received by server
         socket.emit('message_ack', { 
           clientMessageId: messageId,
           messageId: newMessage.id,
           status: 'sent' 
         });
+        
+        // Send delivery status update if some members are online
+        if (onlineMembers.length > 0) {
+          socket.emit('message_delivered', {
+            messageId: newMessage.id,
+            deliveredTo: onlineMembers,
+            timestamp: newMessage.deliveredAt
+          });
+        }
       } catch (error) {
         console.error('Group message error:', error);
         socket.emit('error', { 
           messageId: data.messageId,
           message: 'Failed to send message to group' 
         });
+      }
+    });
+
+    // Message delivery confirmation
+    socket.on('message_delivered', async (data) => {
+      try {
+        const { messageId } = data;
+        const userId = socket.user.id;
+        
+        if (!messageId) {
+          return;
+        }
+        
+        // Update message delivery status
+        const message = await Message.findByPk(messageId);
+        
+        if (!message) {
+          return;
+        }
+        
+        // Only mark as delivered if the current user is the recipient
+        if (message.receiverId === userId) {
+          message.isDelivered = true;
+          message.deliveredAt = new Date();
+          await message.save();
+          
+          // Notify sender that message has been delivered
+          const senderSocketId = onlineUsers.get(message.senderId);
+          if (senderSocketId) {
+            io.to(senderSocketId).emit('message_delivered', {
+              messageId,
+              deliveredTo: userId,
+              timestamp: message.deliveredAt
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Message delivery confirmation error:', error);
       }
     });
 
@@ -328,6 +416,11 @@ function configureSocket(server) {
         
         // Only mark as read if the current user is the recipient
         if (message.receiverId === userId) {
+          // Also mark as delivered if not already
+          message.isDelivered = true;
+          message.deliveredAt = message.deliveredAt || new Date();
+          
+          // Mark as read
           message.isRead = true;
           message.readAt = new Date();
           await message.save();
@@ -371,6 +464,52 @@ function configureSocket(server) {
           },
           type: sequelize.QueryTypes.INSERT
         });
+        
+        // Also mark all unread messages in this group as delivered
+        await Message.update(
+          {
+            isDelivered: true,
+            deliveredAt: new Date()
+          },
+          {
+            where: {
+              groupId,
+              isDelivered: false
+            }
+          }
+        );
+        
+        // Create delivery records for all undelivered messages
+        const undeliveredMessages = await Message.findAll({
+          where: {
+            groupId,
+            senderId: {
+              [Op.ne]: userId
+            }
+          },
+          include: [
+            {
+              model: User,
+              as: 'sender',
+              attributes: ['id']
+            }
+          ]
+        });
+        
+        // Create delivery records
+        for (const message of undeliveredMessages) {
+          await createGroupMessageDelivery(message.id, userId);
+          
+          // Notify the sender that the message has been delivered
+          const senderSocketId = onlineUsers.get(message.senderId);
+          if (senderSocketId) {
+            io.to(senderSocketId).emit('message_delivered', {
+              messageId: message.id,
+              deliveredTo: userId,
+              timestamp: new Date()
+            });
+          }
+        }
       } catch (error) {
         console.error('Group read error:', error);
       }
@@ -554,10 +693,101 @@ async function notifyUserStatus(io, userId, status) {
 }
 
 /**
+ * Update delivery status for all pending messages when a user comes online
+ */
+async function updatePendingMessagesDeliveryStatus(io, userId) {
+  try {
+    // Find all undelivered messages where this user is the recipient
+    const pendingMessages = await Message.findAll({
+      where: {
+        receiverId: userId,
+        isDelivered: false
+      }
+    });
+    
+    if (pendingMessages.length === 0) {
+      return;
+    }
+    
+    // Current timestamp for all updates
+    const now = new Date();
+    
+    // Update all pending messages to delivered status
+    await Message.update(
+      {
+        isDelivered: true,
+        deliveredAt: now
+      },
+      {
+        where: {
+          id: pendingMessages.map(msg => msg.id)
+        }
+      }
+    );
+    
+    // Notify senders of delivery for each message
+    const senderGroups = {};
+    
+    // Group messages by sender to avoid multiple notifications
+    pendingMessages.forEach(message => {
+      if (!senderGroups[message.senderId]) {
+        senderGroups[message.senderId] = [];
+      }
+      senderGroups[message.senderId].push(message.id);
+    });
+    
+    // Send delivery notifications to each sender
+    Object.entries(senderGroups).forEach(([senderId, messageIds]) => {
+      const senderSocketId = onlineUsers.get(parseInt(senderId));
+      
+      if (senderSocketId) {
+        // Send individual notifications for each message
+        messageIds.forEach(messageId => {
+          io.to(senderSocketId).emit('message_delivered', {
+            messageId,
+            deliveredTo: userId,
+            timestamp: now
+          });
+        });
+      }
+    });
+  } catch (error) {
+    console.error('Update pending messages error:', error);
+  }
+}
+
+/**
+ * Create a group message delivery record
+ */
+async function createGroupMessageDelivery(messageId, userId) {
+  try {
+    // This would be a table to track which group members have received a message
+    await sequelize.query(`
+      INSERT INTO "GroupMessageDeliveries" ("messageId", "userId", "deliveredAt")
+      VALUES (:messageId, :userId, :deliveredAt)
+      ON CONFLICT ("messageId", "userId") 
+      DO NOTHING
+    `, {
+      replacements: {
+        messageId,
+        userId,
+        deliveredAt: new Date()
+      },
+      type: sequelize.QueryTypes.INSERT
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('Create group message delivery error:', error);
+    return false;
+  }
+}
+
+/**
  * Send push notification to offline users
  * This is a placeholder function that would integrate with FCM/APNs
  */
-async function sendPushNotification(userId, senderId, message, groupName = null, isGroup = false) {
+async function sendPushNotification(userId, senderId, message, groupName = null, isGroup = false, hasAttachments = false) {
   try {
     // Get recipient's push token
     const user = await User.findByPk(userId, {
@@ -578,8 +808,8 @@ async function sendPushNotification(userId, senderId, message, groupName = null,
     // Prepare notification payload
     const title = isGroup ? groupName : senderName;
     const body = isGroup 
-      ? `${senderName}: ${message.substring(0, 100)}` 
-      : message.substring(0, 100);
+      ? `${senderName}: ${message.substring(0, 100)}${hasAttachments ? ' 📎' : ''}` 
+      : `${message.substring(0, 100)}${hasAttachments ? ' 📎' : ''}`;
     
     // This would integrate with FCM for Android and APNs for iOS
     // For this example, we'll just log the notification

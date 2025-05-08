@@ -1,7 +1,8 @@
-// client/src/components/MessageList.js - Complete fixed version
+// client/src/components/MessageList.js - With WhatsApp-like ticks
 import React, { useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { useSelector } from 'react-redux';
+import { Check, CheckCheck } from 'lucide-react';
 import ImagePreview from './ImagePreview';
 
 const ListContainer = styled.div`
@@ -84,23 +85,26 @@ const MessageTime = styled.div`
   position: absolute;
   bottom: 5px;
   right: 10px;
+  display: flex;
+  align-items: center;
 `;
 
 const MessageStatus = styled.span`
-  font-size: 0.7em;
-  color: ${props => props.theme === 'dark' ? '#ccc' : '#999'};
-  margin-left: 5px;
+  margin-left: 4px;
+  display: flex;
+  align-items: center;
   
-  ${props => props.status === 'sent' && `
-    color: #8BC34A;
-  `}
+  svg {
+    width: 14px;
+    height: 14px;
+  }
   
-  ${props => props.status === 'delivered' && `
-    color: #2196F3;
-  `}
+  /* Default gray color for ticks */
+  color: ${props => props.theme === 'dark' ? '#aaa' : '#8D8D8D'};
   
+  /* Blue color for read ticks */
   ${props => props.status === 'read' && `
-    color: #9C27B0;
+    color: #4FC3F7;
   `}
 `;
 
@@ -162,7 +166,6 @@ const MessageList = ({ messages, currentUserId, isLoading, isGroup }) => {
   const messagesEndRef = useRef(null);
   const [processedMessages, setProcessedMessages] = useState([]);
 
-  // const [previewImage, setPreviewImage] = useState(null);
   const [previewImages, setPreviewImages] = useState([]);
   const [previewIndex, setPreviewIndex] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
@@ -249,6 +252,9 @@ const MessageList = ({ messages, currentUserId, isLoading, isGroup }) => {
   // Group messages by date
   const groupMessagesByDate = () => {
     const groups = {};
+
+    console.log("group mesg by date", processedMessages);
+    
     
     processedMessages.forEach(message => {
       const timestamp = message.timestamp || message.createdAt;
@@ -359,56 +365,29 @@ const MessageList = ({ messages, currentUserId, isLoading, isGroup }) => {
     }
   };
   
-  // Render attachment preview
-  // const renderAttachment = (attachment) => {
-  //   if (!attachment) return null;
-    
-  //   const isImage = attachment.fileName && /\.(jpeg|jpg|gif|png)$/i.test(attachment.fileName);
-    
-  //   if (isImage) {
-  //     return (
-  //       <AttachmentPreview key={attachment.id}>
-  //         <Image 
-  //           src={attachment.filePath} 
-  //           alt={attachment.fileName} 
-  //           onClick={() => window.open(attachment.filePath, '_blank')}
-  //         />
-  //       </AttachmentPreview>
-  //     );
-  //   } else {
-  //     // For documents
-  //     return (
-  //       <AttachmentPreview key={attachment.id}>
-  //         <Document 
-  //           theme={theme}
-  //           onClick={() => window.open(attachment.filePath, '_blank')}
-  //         >
-  //           <DocumentIcon theme={theme}>
-  //             <i className="material-icons">insert_drive_file</i>
-  //           </DocumentIcon>
-  //           <DocumentInfo>
-  //             <DocumentName theme={theme}>{attachment.fileName}</DocumentName>
-  //             <DocumentSize theme={theme}>
-  //               {Math.round((attachment.fileSize || 0) / 1024)} KB
-  //             </DocumentSize>
-  //           </DocumentInfo>
-  //         </Document>
-  //       </AttachmentPreview>
-  //     );
-  //   }
-  // };
-  
-  // Get status icon
+  // Get status icon for WhatsApp-like ticks
   const getStatusIcon = (status) => {
+    console.log("message status icon", status);
+    
     switch (status) {
       case 'sending':
-        return <i className="material-icons" style={{ fontSize: '12px' }}>access_time</i>;
+        // Clock icon for messages that are sending
+        return (
+          <svg viewBox="0 0 16 15" width="16" height="15" className="clock-icon">
+            <circle cx="8" cy="7.5" r="5.5" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+            <line x1="8" y1="7.5" x2="8" y2="4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            <line x1="8" y1="7.5" x2="10.5" y2="7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+        );
       case 'sent':
-        return <i className="material-icons" style={{ fontSize: '12px' }}>check</i>;
+        // Single tick for sent
+        return <Check size={16} />;
       case 'delivered':
-        return <i className="material-icons" style={{ fontSize: '12px' }}>done_all</i>;
+        // Double tick for delivered
+        return <CheckCheck size={16} />;
       case 'read':
-        return <i className="material-icons" style={{ fontSize: '12px', color: '#2196F3' }}>done_all</i>;
+        // Double tick for read (will be colored blue via CSS)
+        return <CheckCheck size={16} />;
       default:
         return null;
     }
