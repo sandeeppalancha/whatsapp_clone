@@ -192,6 +192,8 @@ exports.getConversations = async (req, res) => {
           user: otherUser,
           lastMessage: {
             id: message.id,
+            isRead: message.isRead,
+            isDelivered: message.isDelivered,
             content: message.content,
             senderId: message.senderId,
             timestamp: message.createdAt,
@@ -250,6 +252,8 @@ exports.getConversations = async (req, res) => {
         admin: group.admin,
         lastMessage: lastMessage ? {
           id: lastMessage.id,
+          isRead: lastMessage.isRead,
+          isDelivered: lastMessage.isDelivered,
           content: lastMessage.content,
           senderId: lastMessage.senderId,
           senderName: lastMessage.sender.username,

@@ -24,11 +24,11 @@ const MessageDate = styled.div`
   text-align: center;
   margin: 16px auto;
   color: ${props => props.theme === 'dark' ? '#aaa' : '#777'};
-  font-size: 0.9em;
+  font-size: 0.75em;
   background: #f5f5f5;
-  padding: 8px 10px;
+  padding: 6px 12px;
   width: fit-content;
-  border-radius: 10px;
+  border-radius: 12px;
   font-weight: 500;
 `;
 
@@ -253,7 +253,6 @@ const MessageList = ({ messages, currentUserId, isLoading, isGroup }) => {
   const groupMessagesByDate = () => {
     const groups = {};
 
-    console.log("group mesg by date", processedMessages);
     
     
     processedMessages.forEach(message => {
@@ -367,7 +366,6 @@ const MessageList = ({ messages, currentUserId, isLoading, isGroup }) => {
   
   // Get status icon for WhatsApp-like ticks
   const getStatusIcon = (status) => {
-    console.log("message status icon", status);
     
     switch (status) {
       case 'sending':
@@ -412,7 +410,6 @@ const MessageList = ({ messages, currentUserId, isLoading, isGroup }) => {
           {group.messages.map(message => {
             const isSent = message.senderId === currentUserId;
             const messageId = message.id || message.clientMessageId || Math.random().toString(36).substr(2, 9);
-            
             return (
               <MessageBubble 
                 key={messageId}
@@ -435,7 +432,7 @@ const MessageList = ({ messages, currentUserId, isLoading, isGroup }) => {
                       status={message.status}
                       theme={theme}
                     >
-                      {getStatusIcon(message.status)}
+                      {getStatusIcon(message.status || 'sent')}
                     </MessageStatus>
                   )}
                 </MessageTime>

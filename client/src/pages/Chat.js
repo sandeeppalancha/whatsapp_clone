@@ -111,29 +111,60 @@ const Chat = () => {
   }, [id, conversationMessages, hasMarkedAsRead]);
   
   const handleSendMessage = useCallback((message, attachments = []) => {
-    console.log("handle send messgae", attachments);
+    console.log("Starting handleSendMessage");
     
     if (!message.trim() && attachments.length === 0) return;
     
-    // Generate a unique ID for this message
-    const messageId = Math.random().toString(36).substr(2, 9);
+    // Send message through socket first to get the clientMessageId
+    const clientMessageId = sendPrivateMessage(id, message, attachments);
     
-    // Send message through socket
-    sendPrivateMessage(id, message, attachments);
+    console.log("Sent message and received clientMessageId:", clientMessageId);
     
-    // Add message to local state immediately for UI feedback
+    if (!clientMessageId) {
+      console.error("❌ Failed to get clientMessageId from sendPrivateMessage");
+      return; // Don't proceed if we couldn't get an ID
+    }
+    
+    // Create message object with the same clientMessageId
+    const messageObject = {
+      clientMessageId: clientMessageId, // Use the SAME ID that was sent to the server
+      content: message,
+      senderId: user?.id,
+      attachments,
+      timestamp: new Date().toISOString(),
+      status: 'sending'  // Initial status
+    };
+    
+    console.log("Created message object with clientMessageId:", messageObject.clientMessageId);
+    
+    // Add message to local state
     dispatch(addMessage({
       conversationId: id,
       isGroup: false,
-      message: {
-        clientMessageId: messageId,
-        content: message,
-        senderId: user?.id,
-        attachments,
-        timestamp: new Date().toISOString(),
-        status: 'sending'
-      }
+      message: messageObject
     }));
+    
+    // Debug check to verify the message was added with the correct ID
+    setTimeout(() => {
+      const state = window.store?.getState();
+      if (!state) {
+        console.error("Could not access Redux store");
+        return;
+      }
+      
+      const messageKey = `user_${id}`;
+      const messages = state.chat.messages[messageKey] || [];
+      
+      const addedMessage = messages.find(msg => msg.clientMessageId === clientMessageId);
+      if (addedMessage) {
+        console.log("✅ Message successfully added to Redux with clientMessageId:", addedMessage.clientMessageId);
+        console.log("Message status:", addedMessage.status);
+      } else {
+        console.error("❌ Message not found in Redux after adding");
+        console.log("Available client message IDs:", messages.map(m => m.clientMessageId));
+      }
+    }, 100);
+    
   }, [dispatch, id, user?.id]);
   
   const handleTyping = useCallback(() => {

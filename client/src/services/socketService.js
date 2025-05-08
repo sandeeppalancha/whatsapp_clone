@@ -47,6 +47,19 @@ export const initializeSocket = (token) => {
   return socket;
 };
 
+export const sendGroupMessageDeliveryConfirmation = (messageId, clientMessageId) => {
+  if (!socket || !isConnected || !messageId) {
+    return;
+  }
+  
+  console.log('Sending group message delivery confirmation for:', { messageId, clientMessageId });
+  
+  socket.emit('group_message_delivered', { 
+    messageId,
+    clientMessageId
+  });
+};
+
 /**
  * Set up all socket event listeners
  */
@@ -66,6 +79,51 @@ const setupSocketEventListeners = () => {
   socket.on('message_ack', handleMessageAck);
   socket.on('message_delivered', handleMessageDelivered);
   socket.on('read_receipt', handleReadReceipt);
+
+  socket.on('group_message_ack', (data) => {
+    console.log('Group message ack received:', data);
+    
+    const payload = {
+      clientMessageId: data.clientMessageId,
+      messageId: data.messageId,
+      status: 'sent',
+      groupId: data.groupId
+    };
+    
+    console.log('Dispatching updateMessageStatus for group message:', payload);
+    
+    store.dispatch(updateMessageStatus(payload));
+  });
+  
+  socket.on('group_message_delivered', (data) => {
+    console.log('Group message delivered notification received:', data);
+    
+    const payload = {
+      clientMessageId: data.clientMessageId,
+      messageId: data.messageId,
+      status: 'delivered',
+      deliveredAt: data.timestamp,
+      deliveredTo: data.deliveredTo,
+      groupId: data.groupId
+    };
+    
+    store.dispatch(updateMessageStatus(payload));
+  });
+  
+  socket.on('group_message_read', (data) => {
+    console.log('Group message read notification received:', data);
+    
+    const payload = {
+      clientMessageId: data.clientMessageId,
+      messageId: data.messageId,
+      status: 'read',
+      readAt: data.timestamp,
+      readBy: data.readBy,
+      groupId: data.groupId
+    };
+    
+    store.dispatch(updateMessageStatus(payload));
+  });
 
   // Status events
   socket.on('user_status', handleUserStatus);
@@ -138,6 +196,8 @@ const handleReconnectFailed = () => {
  */
 const handlePrivateMessage = (data) => {
   const { id, from, message, attachments, timestamp } = data;
+  console.log("handlePrivateMessage in socketservice", data);
+  
   
   // Add message to redux store
   store.dispatch(
@@ -193,25 +253,30 @@ const handlePrivateMessage = (data) => {
 const handleGroupMessage = (data) => {
   const { id, groupId, from, sender, message, attachments, timestamp } = data;
   
-  // Add message to redux store
-  store.dispatch(
-    addMessage({
-      conversationId: groupId,
-      isGroup: true,
-      message: {
-        id: id || Math.random().toString(36).substr(2, 9),
-        content: message,
-        senderId: from,
-        sender: sender,
-        attachments: attachments || [],
-        timestamp: timestamp || new Date().toISOString(),
-        status: 'received'
-      }
-    })
-  );
-  
-  // Immediately confirm delivery to sender
-  sendDeliveryConfirmation(id);
+  console.log('Received group message:', data);
+    
+    // Add message to Redux
+    store.dispatch(
+      addMessage({
+        conversationId: data.groupId,
+        isGroup: true,
+        message: {
+          id: data.id,
+          clientMessageId: data.clientMessageId, // Store the client ID if provided
+          content: data.message,
+          senderId: data.from,
+          sender: data.sender,
+          attachments: data.attachments || [],
+          timestamp: data.timestamp || new Date().toISOString(),
+          status: 'received'
+        }
+      })
+    );
+    
+    // Send delivery confirmation if this is a new message
+    if (data.id) {
+      sendGroupMessageDeliveryConfirmation(data.id, data.clientMessageId);
+    }
   
   // Create notification if not in the active conversation
   const activeConversation = store.getState().chat.activeConversation;
@@ -249,15 +314,37 @@ const handleGroupMessage = (data) => {
  * Handle message acknowledgement (sent)
  */
 const handleMessageAck = (data) => {
-  const { clientMessageId, messageId, status } = data;
+  console.log('🔄 Socket received message_ack:', data);
   
-  store.dispatch(
-    updateMessageStatus({ 
-      clientMessageId,
-      messageId, 
-      status 
-    })
-  );
+  const {clientMessageId, messageId, status} = data;
+  // Make sure we have the clientMessageId
+  // const clientMessageId = data.clientMessageId;
+  const serverMessageId = data.messageId;
+  
+  if (!clientMessageId && !serverMessageId) {
+    console.error('❌ Message ack received without any ID!', data);
+    return;
+  }
+  
+  // Log all information for debugging
+  console.log('Received message_ack with clientMessageId:', clientMessageId, 'and serverMessageId:', serverMessageId);
+  
+  // Create the update payload
+  const payload = {
+    clientMessageId: clientMessageId,
+    messageId: serverMessageId, 
+    status: status
+  };
+  
+  console.log('Dispatching updateMessageStatus with:', payload);
+  
+  store.dispatch(updateMessageStatus(payload));
+
+  // Check the store after update
+  setTimeout(() => {
+    const state = store.getState();
+    console.log('Redux store after message_delivered:', state.chat.messages);
+  }, 100);
 };
 
 /**
@@ -265,6 +352,7 @@ const handleMessageAck = (data) => {
  */
 const handleMessageDelivered = (data) => {
   const { messageId, deliveredTo, timestamp } = data;
+  console.log("ui handleMessageDelivered", data);
   
   store.dispatch(
     updateMessageStatus({
@@ -274,6 +362,12 @@ const handleMessageDelivered = (data) => {
       deliveredTo
     })
   );
+
+  // Check the store after update
+  setTimeout(() => {
+    const state = store.getState();
+    console.log('Redux store after message_delivered:', state.chat.messages);
+  }, 100);
 };
 
 /**
@@ -376,7 +470,9 @@ export const sendPrivateMessage = (to, message, attachments = []) => {
     return false;
   }
   
-  const messageId = Math.random().toString(36).substr(2, 9);
+  // Generate client message ID for tracking
+  const clientMessageId = Math.random().toString(36).substr(2, 9);
+  console.log('Generated clientMessageId for tracking:', clientMessageId);
   
   // Make sure attachments are properly formatted for the socket
   const formattedAttachments = attachments.map(att => ({
@@ -387,35 +483,63 @@ export const sendPrivateMessage = (to, message, attachments = []) => {
     filePath: att.filePath
   }));
   
+  // Send message through socket
   socket.emit('private_message', {
     to,
     message,
-    messageId,
+    messageId: clientMessageId, // Send the clientMessageId to the server
     attachments: formattedAttachments
   });
   
-  return messageId;
+  // Store the clientMessageId for tracking
+  // This maps the client ID to the conversation
+  if (!window.messageTracker) {
+    window.messageTracker = {};
+  }
+  window.messageTracker[clientMessageId] = { to, timestamp: Date.now() };
+  
+  return clientMessageId;
 };
 
 /**
  * Send a group message
  */
 export const sendGroupMessage = (groupId, message, attachments = []) => {
+  console.log("SEND group message", groupId, message, attachments);
+  
   if (!socket || !isConnected) {
     console.error('Socket not connected');
     return false;
   }
   
-  const messageId = Math.random().toString(36).substr(2, 9);
+  // Generate a unique client message ID for tracking
+  const clientMessageId = Math.random().toString(36).substr(2, 9);
+  console.log('Generated clientMessageId for group message:', clientMessageId);
   
+  // Format attachments properly
+  const formattedAttachments = attachments.map(att => ({
+    id: att.id,
+    fileName: att.fileName,
+    fileType: att.fileType,
+    fileSize: att.fileSize,
+    filePath: att.filePath
+  }));
+  
+  // Send message to server with the client message ID
   socket.emit('group_message', {
     groupId,
     message,
-    messageId,
-    attachments: attachments.map(att => ({ id: att.id }))
+    messageId: clientMessageId, // Send clientMessageId to server
+    attachments: formattedAttachments
   });
   
-  return messageId;
+  // Store for tracking
+  if (!window.messageTracker) {
+    window.messageTracker = {};
+  }
+  window.messageTracker[clientMessageId] = { groupId, timestamp: Date.now() };
+  
+  return clientMessageId; // Return the ID for client-side tracking
 };
 
 /**
@@ -425,6 +549,8 @@ export const sendDeliveryConfirmation = (messageId) => {
   if (!socket || !isConnected || !messageId) {
     return;
   }
+
+  console.log("sendDeliveryConfirmation", messageId);
   
   socket.emit('message_delivered', { messageId });
 };
@@ -437,6 +563,8 @@ export const sendReadReceipt = (messageId) => {
     return;
   }
   
+  console.log("sendReadReceipt", messageId);
+
   socket.emit('read_receipt', { messageId });
 };
 

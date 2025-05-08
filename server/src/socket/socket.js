@@ -99,8 +99,10 @@ function configureSocket(server) {
     // Private message
     socket.on('private_message', async (data) => {
       try {
-        const { to, message, messageId, attachments = [] } = data;
+        const { to, message, messageId: clientMessageId, attachments = [] } = data;
         const from = socket.user.id;
+        
+        console.log('Received private_message with clientMessageId:', clientMessageId);
         
         // Validate parameters
         if (!to || (!message && (!attachments || attachments.length === 0))) {
@@ -114,8 +116,11 @@ function configureSocket(server) {
           senderId: from,
           receiverId: to,
           isRead: false,
-          isDelivered: false // Add this field to track delivery status
+          isDelivered: false,
+          clientMessageId: clientMessageId // Store the client message ID
         });
+        
+        console.log('Created message in database with ID:', newMessage.id, 'and clientMessageId:', clientMessageId);
         
         // Process attachments if any
         if (attachments && attachments.length > 0) {
@@ -148,7 +153,9 @@ function configureSocket(server) {
         if (recipientSocketId) {
           io.to(recipientSocketId).emit('private_message', {
             id: newMessage.id,
+            clientMessageId: clientMessageId, // Include clientMessageId for tracking
             from,
+            to,
             message: newMessage.content,
             attachments: messageWithAttachments.attachments,
             timestamp: newMessage.createdAt
@@ -160,16 +167,21 @@ function configureSocket(server) {
           await newMessage.save();
         }
         
-        // Emit to sender with the message ID
+        // Important: Include BOTH message IDs in the acknowledgment
+        console.log('Sending message_ack with clientMessageId:', clientMessageId, 'and messageId:', newMessage.id);
+        
+        // Emit to sender with both IDs
         socket.emit('message_ack', { 
-          clientMessageId: messageId,
-          messageId: newMessage.id, 
+          clientMessageId: clientMessageId, // The original tracking ID
+          messageId: newMessage.id,         // The server-generated ID 
+          to: to,                          // Include recipient for additional tracking
           status: 'sent' 
         });
         
         // If recipient is online, also send delivery confirmation
         if (recipientSocketId) {
           socket.emit('message_delivered', {
+            clientMessageId: clientMessageId, // Include both IDs
             messageId: newMessage.id,
             deliveredTo: parseInt(to),
             timestamp: newMessage.deliveredAt
@@ -205,7 +217,7 @@ function configureSocket(server) {
     // Group message
     socket.on('group_message', async (data) => {
       try {
-        const { groupId, message, messageId, attachments = [] } = data;
+        const { groupId, message, messageId: clientMessageId, attachments = [] } = data;
         const from = socket.user.id;
         
         // Validate parameters
@@ -238,7 +250,8 @@ function configureSocket(server) {
           senderId: from,
           groupId,
           isRead: false,
-          isDelivered: false // Track delivery status
+          isDelivered: false, // Track delivery status
+          clientMessageId: clientMessageId
         });
         
         // Process attachments if any
@@ -294,6 +307,7 @@ function configureSocket(server) {
                 
                 io.to(memberSocketId).emit('group_message', {
                   id: newMessage.id,
+                  clientMessageId: clientMessageId,
                   groupId,
                   from,
                   sender: messageWithDetails.sender,
@@ -334,18 +348,23 @@ function configureSocket(server) {
           newMessage.deliveredAt = new Date();
           await newMessage.save();
         }
+
+        console.log('Sending group_message_ack with clientMessageId:', clientMessageId, 'and messageId:', newMessage.id);
         
         // Acknowledge message received by server
-        socket.emit('message_ack', { 
-          clientMessageId: messageId,
+        socket.emit('group_message_ack', { 
+          clientMessageId: clientMessageId,
           messageId: newMessage.id,
+          groupId: groupId,
           status: 'sent' 
         });
         
         // Send delivery status update if some members are online
         if (onlineMembers.length > 0) {
-          socket.emit('message_delivered', {
+          socket.emit('group_message_delivered', {
+            clientMessageId: clientMessageId,
             messageId: newMessage.id,
+            groupId: groupId,
             deliveredTo: onlineMembers,
             timestamp: newMessage.deliveredAt
           });
@@ -361,6 +380,8 @@ function configureSocket(server) {
 
     // Message delivery confirmation
     socket.on('message_delivered', async (data) => {
+      console.log("message_delivered", data);
+      
       try {
         const { messageId } = data;
         const userId = socket.user.id;
@@ -399,6 +420,8 @@ function configureSocket(server) {
 
     // Message read receipt
     socket.on('read_receipt', async (data) => {
+      console.log("read_receipt", data);
+      
       try {
         const { messageId } = data;
         const userId = socket.user.id;
@@ -440,15 +463,63 @@ function configureSocket(server) {
       }
     });
 
+    socket.on('group_message_delivered', async (data) => {
+      try {
+        const { messageId, clientMessageId } = data;
+        const userId = socket.user.id;
+        
+        if (!messageId) {
+          console.error('Missing messageId in group_message_delivered');
+          return;
+        }
+        
+        console.log('Group message delivered notification received:', { messageId, clientMessageId, userId });
+        
+        // Find the message in the database
+        const message = await Message.findByPk(messageId);
+        
+        if (!message) {
+          console.error('Message not found:', messageId);
+          return;
+        }
+        
+        // Create a delivery record
+        await createGroupMessageDelivery(messageId, userId);
+        
+        // Update message as delivered if not already
+        if (!message.isDelivered) {
+          message.isDelivered = true;
+          message.deliveredAt = new Date();
+          await message.save();
+        }
+        
+        // Notify sender that message has been delivered
+        const senderSocketId = onlineUsers.get(message.senderId);
+        if (senderSocketId) {
+          io.to(senderSocketId).emit('group_message_delivered', {
+            messageId,
+            clientMessageId: message.clientMessageId || clientMessageId, // Use stored clientMessageId if available
+            groupId: message.groupId,
+            deliveredTo: userId,
+            timestamp: new Date()
+          });
+        }
+      } catch (error) {
+        console.error('Group message delivery error:', error);
+      }
+    });
+
     // Group message read
     socket.on('group_read', async (data) => {
       try {
-        const { groupId, lastRead } = data;
+        const { groupId, lastRead, messageIds = [] } = data;
         const userId = socket.user.id;
         
         if (!groupId) {
           return;
         }
+        
+        console.log('Group read notification received:', { groupId, messageIds, userId });
         
         // Update or create group read record
         await sequelize.query(`
@@ -465,7 +536,7 @@ function configureSocket(server) {
           type: sequelize.QueryTypes.INSERT
         });
         
-        // Also mark all unread messages in this group as delivered
+        // Mark messages as delivered first
         await Message.update(
           {
             isDelivered: true,
@@ -496,18 +567,35 @@ function configureSocket(server) {
           ]
         });
         
-        // Create delivery records
+        // Process each message for delivery and read status
         for (const message of undeliveredMessages) {
+          // Create delivery record
           await createGroupMessageDelivery(message.id, userId);
           
-          // Notify the sender that the message has been delivered
+          // Notify sender about delivery
           const senderSocketId = onlineUsers.get(message.senderId);
           if (senderSocketId) {
-            io.to(senderSocketId).emit('message_delivered', {
+            io.to(senderSocketId).emit('group_message_delivered', {
               messageId: message.id,
+              clientMessageId: message.clientMessageId,
+              groupId,
               deliveredTo: userId,
               timestamp: new Date()
             });
+          }
+          
+          // If message is in the list of read messages, send read receipt
+          if (messageIds.includes(message.id) || messageIds.length === 0) {
+            // For explicit read messages or if marking all as read
+            if (senderSocketId) {
+              io.to(senderSocketId).emit('group_message_read', {
+                messageId: message.id,
+                clientMessageId: message.clientMessageId,
+                groupId,
+                readBy: userId,
+                timestamp: new Date()
+              });
+            }
           }
         }
       } catch (error) {

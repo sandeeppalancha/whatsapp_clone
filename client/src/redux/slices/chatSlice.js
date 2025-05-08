@@ -32,7 +32,25 @@ export const fetchMessages = createAsyncThunk(
   async ({ conversationId, isGroup }, { rejectWithValue }) => {
     try {
       const response = await chatService.getMessages(conversationId, isGroup);
-      return { conversationId, isGroup, messages: response.data };
+      
+      // Transform messages to ensure they have status property
+      const transformedMessages = response.data.map(message => {
+        // Set status based on isRead and isDelivered flags
+        let status = 'sent'; // Default status
+        
+        if (message.isRead) {
+          status = 'read';
+        } else if (message.isDelivered) {
+          status = 'delivered';
+        }
+        
+        return {
+          ...message,
+          status // Add status property
+        };
+      });
+      
+      return { conversationId, isGroup, messages: transformedMessages };
     } catch (error) {
       return rejectWithValue(error.response?.data || { message: 'Failed to fetch messages' });
     }
@@ -137,20 +155,80 @@ const chatSlice = createSlice({
       }
     },
     updateMessageStatus: (state, action) => {
-      // Enhanced to handle all message status updates
       const { clientMessageId, messageId, status, readAt, deliveredAt, readBy, deliveredTo } = action.payload;
       
-      // Update message status in appropriate conversation
+      console.log('⚙️ updateMessageStatus called with:', action.payload);
+      
+      // Validation check for any ID
+      if (!clientMessageId && !messageId) {
+        console.error('❌ No message ID provided in updateMessageStatus!');
+        return;
+      }
+      
+      let foundMessage = false;
+      let foundInKey = null;
+      
+      // Loop through all conversations
       for (const key in state.messages) {
-        const messageIndex = state.messages[key].findIndex(
-          msg => {
-            if (messageId && msg.id === messageId) return true;
-            if (clientMessageId && msg.clientMessageId === clientMessageId) return true;
-            return false;
+        const messages = state.messages[key];
+        
+        if (messages.length === 0) {
+          continue; // Skip empty conversations
+        }
+        
+        console.log(`Checking ${messages.length} messages in conversation ${key}`);
+        
+        // Try multiple ways to find the message
+        const findByClientId = clientMessageId ? messages.findIndex(m => m.clientMessageId === clientMessageId) : -1;
+        const findByServerId = messageId ? messages.findIndex(m => m.id === messageId) : -1;
+        const findByClientIdString = clientMessageId ? 
+          messages.findIndex(m => m.clientMessageId && m.clientMessageId.toString() === clientMessageId.toString()) : -1;
+        const findByServerIdString = messageId ? 
+          messages.findIndex(m => m.id && m.id.toString() === messageId.toString()) : -1;
+        
+        // Use the first successful match
+        let messageIndex = -1;
+        
+        if (findByClientId !== -1) {
+          console.log(`✅ Found message by exact clientMessageId match: ${clientMessageId}`);
+          messageIndex = findByClientId;
+        } else if (findByServerId !== -1) {
+          console.log(`✅ Found message by exact messageId match: ${messageId}`);
+          messageIndex = findByServerId;
+        } else if (findByClientIdString !== -1) {
+          console.log(`✅ Found message by string clientMessageId match: ${clientMessageId}`);
+          messageIndex = findByClientIdString;
+        } else if (findByServerIdString !== -1) {
+          console.log(`✅ Found message by string messageId match: ${messageId}`);
+          messageIndex = findByServerIdString;
+        }
+        
+        // Try a more aggressive approach if still not found and we have a clientMessageId
+        if (messageIndex === -1 && clientMessageId) {
+          console.log('🔍 Trying aggressive search for message with clientMessageId:', clientMessageId);
+          
+          // Check the first few messages (most recent ones are likely our target)
+          for (let i = messages.length - 1; i >= Math.max(0, messages.length - 10); i--) {
+            const msg = messages[i];
+            console.log(`Message ${i}:`, {
+              clientMessageId: msg.clientMessageId,
+              id: msg.id,
+              content: msg.content?.substring(0, 15) || '[no content]'
+            });
           }
-        );
+        }
         
         if (messageIndex !== -1) {
+          foundMessage = true;
+          foundInKey = key;
+          
+          // Log the message before update
+          console.log('Message before update:', {
+            clientMessageId: state.messages[key][messageIndex].clientMessageId,
+            id: state.messages[key][messageIndex].id,
+            status: state.messages[key][messageIndex].status
+          });
+          
           // Update status
           state.messages[key][messageIndex].status = status;
           
@@ -182,8 +260,39 @@ const chatSlice = createSlice({
             state.messages[key][messageIndex].isRead = true;
           }
           
+          // Log the message after update
+          console.log('✅ Message updated with new status:', status);
+          console.log('Message after update:', {
+            clientMessageId: state.messages[key][messageIndex].clientMessageId,
+            id: state.messages[key][messageIndex].id,
+            status: state.messages[key][messageIndex].status
+          });
+          
           break;
         }
+      }
+      
+      if (!foundMessage) {
+        console.error('❌ Could not find message to update!');
+        console.error('Looking for messageId:', messageId, 'or clientMessageId:', clientMessageId);
+        
+        // Log store state for debugging
+        console.log('Available conversations:', Object.keys(state.messages));
+        for (const key in state.messages) {
+          const messages = state.messages[key];
+          if (messages.length > 0) {
+            console.log(`Last 3 messages in ${key}:`, 
+              messages.slice(-3).map(m => ({
+                clientMessageId: m.clientMessageId,
+                id: m.id,
+                status: m.status,
+                content: m.content?.substring(0, 15) || '[no content]'
+              }))
+            );
+          }
+        }
+      } else {
+        console.log(`✅ Successfully updated message status to '${status}' in conversation ${foundInKey}`);
       }
     },
     

@@ -1,8 +1,8 @@
-// client/src/components/ConversationList.js - Updated with title and timestamp aligned
+// client/src/components/ConversationList.js - Updated with WhatsApp-like ticks
 import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
 import styled from 'styled-components';
-import { Plus, UserPlus, Users, MessageCircle, MoreVertical, Search } from 'lucide-react';
+import { Plus, UserPlus, Users, MessageCircle, MoreVertical, Search, Check } from 'lucide-react';
 
 const ListContainer = styled.div`
   width: 100%;
@@ -102,13 +102,20 @@ const SearchInput = styled.input`
   }
 `;
 
+const LastMessageContainer = styled.div`
+  display: flex;
+  align-items: center;
+  width: 100%;
+  overflow: hidden;
+`;
+
 const LastMessage = styled.div`
   font-size: 0.85em; /* Slightly smaller text */
   color: ${props => props.theme === 'dark' ? '#aaa' : '#777'};
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  width: 100%;
+  flex: 1;
 `;
 
 const MetaInfo = styled.div`
@@ -130,6 +137,42 @@ const UnreadBadge = styled.div`
   padding: 0 4px;
 `;
 
+const MessageStatus = styled.span`
+  display: flex;
+  align-items: center;
+  margin-right: 4px;
+  
+  /* Default gray color for ticks */
+  color: ${props => props.theme === 'dark' ? '#aaa' : '#8D8D8D'};
+  
+  /* Blue color for read ticks */
+  ${props => props.status === 'read' && `
+    color: #4FC3F7;
+  `}
+`;
+
+const DoubleCheckContainer = styled.div`
+  position: relative;
+  height: 14px;
+  width: 16px;
+`;
+
+const CheckIcon = styled(Check)`
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 14px;
+  width: 14px;
+`;
+
+const SecondCheckIcon = styled(Check)`
+  position: absolute;
+  top: 0;
+  left: 3px;
+  height: 14px;
+  width: 14px;
+`;
+
 const LoadingIndicator = styled.div`
   padding: 20px;
   text-align: center;
@@ -144,6 +187,7 @@ const NoConversations = styled.div`
 
 const ConversationList = ({ conversations, isLoading, onConversationClick }) => {
   const { theme } = useSelector(state => state.ui);
+  const { user } = useSelector(state => state.auth);
   const [searchTerm, setSearchTerm] = useState('');
   
   // Filter conversations based on search term
@@ -183,9 +227,75 @@ const ConversationList = ({ conversations, isLoading, onConversationClick }) => 
     return message.slice(0, maxLength) + '...';
   };
   
+  // Get status for styling
+  const getStatus = (lastMessage) => {
+    if (!lastMessage || !user || lastMessage.senderId !== user.id) {
+      return null;
+    }
+    
+    // Try to use status property first if available
+    if (lastMessage.status) {
+      return lastMessage.status;
+    }
+    
+    // Fall back to isRead and isDelivered properties
+    if (lastMessage.isRead) {
+      return 'read';
+    } else if (lastMessage.isDelivered) {
+      return 'delivered';
+    } else {
+      return 'sent';
+    }
+  };
+  
+  // Render status icon
+  const renderStatusIcon = (lastMessage) => {
+    // Skip if not the sender or no lastMessage
+    if (!lastMessage || !user || lastMessage.senderId !== user.id) {
+      return null;
+    }
+    
+    const status = getStatus(lastMessage);
+    
+    // Return different icons based on status
+    switch (status) {
+      case 'sending':
+        return (
+          <MessageStatus theme={theme} status={status}>
+            🕒
+          </MessageStatus>
+        );
+      case 'sent':
+        return (
+          <MessageStatus theme={theme} status={status}>
+            <CheckIcon size={14} />
+          </MessageStatus>
+        );
+      case 'delivered':
+        return (
+          <MessageStatus theme={theme} status={status}>
+            <DoubleCheckContainer>
+              <CheckIcon size={14} />
+              <SecondCheckIcon size={14} />
+            </DoubleCheckContainer>
+          </MessageStatus>
+        );
+      case 'read':
+        return (
+          <MessageStatus theme={theme} status={status}>
+            <DoubleCheckContainer>
+              <CheckIcon size={14} />
+              <SecondCheckIcon size={14} />
+            </DoubleCheckContainer>
+          </MessageStatus>
+        );
+      default:
+        return null;
+    }
+  };
+  
   return (
     <ListContainer theme={theme}>
-
       <SearchBarContainer theme={theme}>
         <SearchBar theme={theme}>
           <Search size={18} color={theme === 'dark' ? '#aaa' : '#919191'} />
@@ -214,9 +324,10 @@ const ConversationList = ({ conversations, isLoading, onConversationClick }) => 
           const avatar = isGroup 
             ? conversation.groupPicture 
             : conversation.user?.profilePicture;
-          const lastMessage = conversation.lastMessage?.content || 'No messages yet';
-          const timestamp = conversation.lastMessage?.timestamp || 
-                            conversation.lastMessage?.createdAt || 
+          const lastMessage = conversation.lastMessage || {};
+          const messageText = lastMessage.content || 'No messages yet';
+          const timestamp = lastMessage.timestamp || 
+                            lastMessage.createdAt || 
                             conversation.createdAt;
           const unreadCount = conversation.unreadCount || 0;
           
@@ -239,7 +350,17 @@ const ConversationList = ({ conversations, isLoading, onConversationClick }) => 
                   <ConversationName theme={theme}>{name}</ConversationName>
                   <Timestamp theme={theme}>{formatTime(timestamp)}</Timestamp>
                 </TopRow>
-                <LastMessage theme={theme}>{truncateMessage(lastMessage)}</LastMessage>
+                
+                <LastMessageContainer>
+                  {/* Only show status icon for outgoing messages */}
+                  {lastMessage.senderId === user?.id && renderStatusIcon(lastMessage)}
+                  
+                  <LastMessage theme={theme}>
+                    {truncateMessage(messageText)}
+                    {lastMessage.attachments && lastMessage.attachments.length > 0 && 
+                      (!lastMessage.content ? ' 📎 Attachment' : ' 📎')}
+                  </LastMessage>
+                </LastMessageContainer>
               </ConversationInfo>
               
               <MetaInfo>

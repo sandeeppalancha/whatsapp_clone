@@ -87,22 +87,60 @@ const Group = () => {
   }, [id, conversationMessages, hasMarkedAsRead]);
   
   const handleSendMessage = useCallback((message, attachments = []) => {
-    // Send message through socket
-    const messageId = sendGroupMessage(id, message, attachments);
+    console.log("Starting handleSendMessage for group chat");
     
-    // Add message to local state immediately for UI feedback
+    if (!message.trim() && attachments.length === 0) return;
+    
+    // Send message through socket first to get the clientMessageId
+    const clientMessageId = sendGroupMessage(id, message, attachments);
+    
+    console.log("Sent group message and received clientMessageId:", clientMessageId);
+    
+    if (!clientMessageId) {
+      console.error("❌ Failed to get clientMessageId from sendGroupMessage");
+      return; // Don't proceed if we couldn't get an ID
+    }
+    
+    // Create message object with the same clientMessageId
+    const messageObject = {
+      clientMessageId: clientMessageId, // Use the SAME ID that was sent to the server
+      content: message,
+      senderId: user?.id,
+      attachments,
+      timestamp: new Date().toISOString(),
+      status: 'sending'  // Initial status
+    };
+    
+    console.log("Created group message object with clientMessageId:", messageObject.clientMessageId);
+    
+    // Add message to local state
     dispatch(addMessage({
       conversationId: id,
-      isGroup: true,
-      message: {
-        id: messageId,
-        content: message,
-        senderId: user.id,
-        attachments,
-        timestamp: new Date().toISOString(),
-        status: 'sending'
-      }
+      isGroup: true, // Mark as group message
+      message: messageObject
     }));
+    
+    // Debug check to verify the message was added with the correct ID
+    setTimeout(() => {
+      const state = window.store?.getState();
+      if (!state) {
+        console.error("Could not access Redux store");
+        return;
+      }
+      
+      const messageKey = `group_${id}`; // Note the group_ prefix for group chats
+      const messages = state.chat.messages[messageKey] || [];
+      
+      const addedMessage = messages.find(msg => msg.clientMessageId === clientMessageId);
+      if (addedMessage) {
+        console.log("✅ Group message successfully added to Redux with clientMessageId:", addedMessage.clientMessageId);
+        console.log("Message status:", addedMessage.status);
+      } else {
+        console.error("❌ Group message not found in Redux after adding");
+        console.log("Available client message IDs:", messages.map(m => m.clientMessageId));
+      }
+    }, 100);
+    
   }, [dispatch, id, user?.id]);
   
   const handleTyping = useCallback(() => {
