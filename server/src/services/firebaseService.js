@@ -86,8 +86,6 @@ const checkRateLimitAndTrack = (userId) => {
 
 // Send push notification with better handling
 const sendPushNotification = async (userId, token, notification, data = {}) => {
-  console.log(" inside push service sendPushNotification", notification);
-  
   // Initialize Firebase if not already done
   if (!initializeFirebase()) {
     console.error('Cannot send push notification - Firebase not initialized');
@@ -112,6 +110,9 @@ const sendPushNotification = async (userId, token, notification, data = {}) => {
     // Add timestamp to data to ensure uniqueness
     stringifiedData.timestamp = Date.now().toString();
     
+    // Create a unique message ID for this notification
+    const messageId = `msg_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    
     // Prepare the message with appropriate configuration for Android and iOS
     const message = {
       token,
@@ -125,11 +126,14 @@ const sendPushNotification = async (userId, token, notification, data = {}) => {
           priority: 'high',
           defaultSound: true,
           visibility: 'public'
-        }
+        },
+        // Move collapseKey to the android section where it belongs
+        collapseKey: messageId
       },
       apns: {
         headers: {
-          'apns-priority': '10'
+          'apns-priority': '10',
+          'apns-collapse-id': messageId // For iOS collapse behavior
         },
         payload: {
           aps: {
@@ -138,10 +142,7 @@ const sendPushNotification = async (userId, token, notification, data = {}) => {
             contentAvailable: true
           }
         }
-      },
-      // Ensure we're not collapsing notifications incorrectly
-      // FCM might be collapsing multiple notifications thinking they're duplicates
-      collapseKey: stringifiedData.timestamp
+      }
     };
     
     const response = await admin.messaging().send(message);
