@@ -877,6 +877,8 @@ async function createGroupMessageDelivery(messageId, userId) {
  * This is a placeholder function that would integrate with FCM/APNs
  */
 async function sendPushNotification(userId, senderId, message, groupName = null, isGroup = false, hasAttachments = false) {
+  console.log("inside sockets sendPushNotification");
+  
   try {
     // Get recipient
     const user = await User.findByPk(userId, {

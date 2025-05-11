@@ -86,6 +86,8 @@ const checkRateLimitAndTrack = (userId) => {
 
 // Send push notification with better handling
 const sendPushNotification = async (userId, token, notification, data = {}) => {
+  console.log(" inside push service sendPushNotification", notification);
+  
   // Initialize Firebase if not already done
   if (!initializeFirebase()) {
     console.error('Cannot send push notification - Firebase not initialized');
