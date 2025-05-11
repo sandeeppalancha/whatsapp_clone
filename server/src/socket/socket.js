@@ -316,6 +316,20 @@ function configureSocket(server) {
                   attachments: messageWithDetails.attachments,
                   timestamp: newMessage.createdAt
                 });
+
+                const hasAttachments = messageWithDetails.attachments.length > 0;
+                const notificationMessage = hasAttachments 
+                  ? (message ? `${message} [Attachment]` : 'Sent an attachment')
+                  : message;
+                
+                sendPushNotification(
+                  member.id, 
+                  from, 
+                  notificationMessage, 
+                  group.name, 
+                  true,
+                  hasAttachments
+                );
               } else {
                 // Send push notification to offline members
                 // Include attachment info in the notification
