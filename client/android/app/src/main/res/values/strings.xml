@@ -1,9 +1,9 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Graviti Chat</string>
-    <string name="title_activity_main">Graviti Chat</string>
-    <string name="package_name">com.fyzks.chatapp</string>
-    <string name="custom_url_scheme">com.fyzks.chatapp</string>
+    <string name="app_name">Synapse</string>
+    <string name="title_activity_main">Synapse</string>
+    <string name="package_name">com.fyzks.synapse</string>
+    <string name="custom_url_scheme">com.fyzks.synapse</string>
     <string name="default_notification_channel_id">default_channel</string>
     <string name="default_notification_channel_name">Default</string>
 </resources>
