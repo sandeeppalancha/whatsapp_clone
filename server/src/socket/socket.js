@@ -3,6 +3,7 @@ const socketIO = require('socket.io');
 const jwt = require('jsonwebtoken');
 const { User, Message, Group, Attachment } = require('../db/models');
 const { Op } = require('sequelize');
+const firebaseService = require('../services/firebaseService');
 
 // Keep track of online users
 const onlineUsers = new Map();
@@ -899,26 +900,25 @@ async function sendPushNotification(userId, senderId, message, groupName = null,
       ? `${senderName}: ${message.substring(0, 100)}${hasAttachments ? ' 📎' : ''}` 
       : `${message.substring(0, 100)}${hasAttachments ? ' 📎' : ''}`;
     
-    // This would integrate with FCM for Android and APNs for iOS
-    // For this example, we'll just log the notification
-    console.log(`Push notification to ${userId}:`, {
-      title,
-      body,
-      data: {
-        type: 'message',
-        senderId,
-        conversationId: isGroup ? groupName : senderId,
-        isGroup,
-        messageId: Math.random().toString(36).substr(2, 9) // This would be the actual message ID in a real implementation
-      }
-    });
+    // Additional data for routing when notification is tapped
+    const data = {
+      type: 'message',
+      senderId: senderId.toString(),
+      conversationId: isGroup ? groupName : senderId.toString(),
+      isGroup: isGroup.toString(),
+      messageId: Math.random().toString(36).substr(2, 9)
+    };
     
-    // In a real implementation, you'd send the push notification here
-    // using the appropriate service (FCM/APNs)
+    // Send the push notification
+    await firebaseService.sendPushNotification(
+      user.pushToken,
+      { title, body },
+      data
+    );
     
+    console.log(`Push notification sent to user ${userId}`);
   } catch (error) {
     console.error('Send push notification error:', error);
   }
 }
-
 module.exports = configureSocket;
