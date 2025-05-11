@@ -190,7 +190,7 @@ function configureSocket(server) {
         }
         
         // Send push notification if recipient is offline
-        if (!recipientSocketId) {
+        if (!recipientSocketId || true) {
           // Also include attachment info in the notification
           const hasAttachments = messageWithAttachments.attachments.length > 0;
           const notificationMessage = hasAttachments 
