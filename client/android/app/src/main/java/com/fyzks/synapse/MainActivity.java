@@ -1,4 +1,4 @@
-package com.fyzks.chatapp;
+package com.fyzks.synapse;
 
 import android.os.Bundle;
 import android.app.NotificationChannel;

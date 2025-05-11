@@ -878,29 +878,38 @@ async function createGroupMessageDelivery(messageId, userId) {
  */
 async function sendPushNotification(userId, senderId, message, groupName = null, isGroup = false, hasAttachments = false) {
   try {
-    // Get recipient's push token
+    // Get recipient
     const user = await User.findByPk(userId, {
-      attributes: ['pushToken']
+      attributes: ['id', 'username', 'pushToken']
     });
     
-    if (!user || !user.pushToken) {
+    if (!user) {
+      console.log(`Cannot send push: User ${userId} not found`);
       return;
     }
     
-    // Get sender's name
+    if (!user.pushToken) {
+      console.log(`User ${userId} (${user.username}) has no push token`);
+      return;
+    }
+    
+    // Get sender
     const sender = await User.findByPk(senderId, {
       attributes: ['username']
     });
     
     const senderName = sender ? sender.username : 'Someone';
     
-    // Prepare notification payload
+    // Prepare notification content
     const title = isGroup ? groupName : senderName;
     const body = isGroup 
-      ? `${senderName}: ${message.substring(0, 100)}${hasAttachments ? ' 📎' : ''}` 
-      : `${message.substring(0, 100)}${hasAttachments ? ' 📎' : ''}`;
+      ? `${senderName}: ${message?.substring(0, 100) || ''}${hasAttachments ? ' 📎' : ''}` 
+      : `${message?.substring(0, 100) || ''}${hasAttachments ? ' 📎' : ''}`;
     
-    // Additional data for routing when notification is tapped
+    // Create unique conversation ID
+    const conversationId = isGroup ? `group_${groupName}` : `user_${senderId}`;
+    
+    // Data payload
     const data = {
       type: 'message',
       senderId: senderId.toString(),
@@ -909,14 +918,20 @@ async function sendPushNotification(userId, senderId, message, groupName = null,
       messageId: Math.random().toString(36).substr(2, 9)
     };
     
-    // Send the push notification
-    await firebaseService.sendPushNotification(
+    // Send notification
+    const result = await firebaseService.sendPushNotification(
+      userId,
       user.pushToken,
       { title, body },
       data
     );
     
-    console.log(`Push notification sent to user ${userId}`);
+    if (result) {
+      console.log(`Push notification sent successfully to ${user.username}`);
+    } else {
+      console.log(`Failed to send push notification to ${user.username}`);
+    }
+    
   } catch (error) {
     console.error('Send push notification error:', error);
   }

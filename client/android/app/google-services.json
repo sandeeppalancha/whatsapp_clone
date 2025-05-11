@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "739566547699",
+    "project_id": "synapse-fyzks",
+    "storage_bucket": "synapse-fyzks.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:739566547699:android:8b3455bb0a3ab74e307d86",
+        "android_client_info": {
+          "package_name": "com.fyzks.synapse"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBd9EKbavEhWmVCzi5ZA4iwggddUOd15V0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
