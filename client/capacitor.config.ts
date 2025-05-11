@@ -2,8 +2,8 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.fyzks.chatapp',
-  appName: 'Graviti Chat',
+  appId: 'com.fyzks.synapse',
+  appName: 'Synapse',
   webDir: 'build',
   // bundledWebRuntime: false,
   plugins: {

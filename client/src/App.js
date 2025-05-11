@@ -95,43 +95,40 @@ function App() {
     }
   }, [theme]);
   
-useEffect(() => {
-  // Check if user is already logged in
-  const checkAuthStatus = async () => {
-    try {
-      if (token) {
-        // Get current user data
-        const response = await authService.getCurrentUser();
-        dispatch(setCredentials({
-          user: response.data,
-          token
-        }));
-        
-        // Initialize socket connection
-        initializeSocket(token);
-        
-        // Initialize push notifications on native platforms
-        if (isNative) {
-          console.log('Initializing push notifications...');
-          try {
-            await initializePushNotifications();
-            console.log('Push notifications initialized successfully');
-
-            // Request camera permissions
-            await Camera.requestPermissions();
-          } catch (error) {
-            console.error('Failed to initialize push notifications:', error);
-            // Continue app execution even if push notifications fail
+  useEffect(() => {
+    // Check if user is already logged in
+    const checkAuthStatus = async () => {
+      try {
+        if (token) {
+          // Get current user data
+          const response = await authService.getCurrentUser();
+          dispatch(setCredentials({
+            user: response.data,
+            token
+          }));
+          
+          // Initialize socket connection
+          initializeSocket(token);
+          
+          // Initialize push notifications on native platforms
+          if (Capacitor.isNativePlatform()) {
+            console.log('Initializing push notifications...');
+            try {
+              await initializePushNotifications();
+              console.log('Push notifications initialized successfully');
+            } catch (error) {
+              console.error('Failed to initialize push notifications:', error);
+              // Continue app execution even if push notifications fail
+            }
           }
         }
+      } catch (error) {
+        console.error('Auth check failed:', error);
       }
-    } catch (error) {
-      console.error('Auth check failed:', error);
-    }
-  };
-  
-  checkAuthStatus();
-}, [dispatch, token]);
+    };
+    
+    checkAuthStatus();
+  }, [dispatch, token]);
   
   return (
     <AppContainer theme={theme}>
