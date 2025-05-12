@@ -107,6 +107,7 @@ const LastMessageContainer = styled.div`
   align-items: center;
   width: 100%;
   overflow: hidden;
+  position: relative;
 `;
 
 const LastMessage = styled.div`
@@ -151,6 +152,14 @@ const MessageStatus = styled.span`
   `}
 `;
 
+const SingleCheckContainer = styled.div`
+  position: relative;
+  height: 14px;
+  width: 14px; /* Single check only needs 14px width */
+  display: inline-flex;
+  align-items: center;
+`;
+
 const DoubleCheckContainer = styled.div`
   position: relative;
   height: 14px;
@@ -161,16 +170,16 @@ const CheckIcon = styled(Check)`
   position: absolute;
   top: 0;
   left: 0;
-  height: 14px;
-  width: 14px;
+  height: 16px;
+  width: 16px;
 `;
 
 const SecondCheckIcon = styled(Check)`
   position: absolute;
   top: 0;
   left: 3px;
-  height: 14px;
-  width: 14px;
+  height: 16px;
+  width: 16px;
 `;
 
 const LoadingIndicator = styled.div`
@@ -268,7 +277,9 @@ const ConversationList = ({ conversations, isLoading, onConversationClick }) => 
       case 'sent':
         return (
           <MessageStatus theme={theme} status={status}>
-            <CheckIcon size={14} />
+            <SingleCheckContainer>
+              <CheckIcon size={14} />
+            </SingleCheckContainer>
           </MessageStatus>
         );
       case 'delivered':
