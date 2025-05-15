@@ -8,6 +8,7 @@ import styled from 'styled-components';
 import ChatHeader from '../components/ChatHeader';
 import MessageList from '../components/MessageList';
 import ChatInput from '../components/ChatInput';
+import ForwardMessageModal from '../components/ForwardMessageModal';
 
 // Import Redux actions
 import { setActiveConversation, addMessage, fetchMessages } from '../redux/slices/chatSlice';
@@ -30,6 +31,10 @@ const Chat = () => {
   const { messages, contacts, conversations, isLoading } = useSelector(state => state.chat);
   const [recipient, setRecipient] = useState(null);
   const [hasMarkedAsRead, setHasMarkedAsRead] = useState(false);
+
+  const [replyTo, setReplyTo] = useState(null);
+  const [forwardMessage, setForwardMessage] = useState(null);
+  const [showForwardModal, setShowForwardModal] = useState(false);
   
   // Get message key for this conversation
   const messageKey = `user_${id}`;
@@ -110,13 +115,13 @@ const Chat = () => {
     }
   }, [id, conversationMessages, hasMarkedAsRead]);
   
-  const handleSendMessage = useCallback((message, attachments = []) => {
+  const handleSendMessage = useCallback((message, attachments = [], replyToId = null) => {
     console.log("Starting handleSendMessage");
     
     if (!message.trim() && attachments.length === 0) return;
     
     // Send message through socket first to get the clientMessageId
-    const clientMessageId = sendPrivateMessage(id, message, attachments);
+    const clientMessageId = sendPrivateMessage(id, message, attachments, replyToId);
     
     console.log("Sent message and received clientMessageId:", clientMessageId);
     
@@ -132,7 +137,8 @@ const Chat = () => {
       senderId: user?.id,
       attachments,
       timestamp: new Date().toISOString(),
-      status: 'sending'  // Initial status
+      status: 'sending',  // Initial status
+      replyToId: replyToId
     };
     
     console.log("Created message object with clientMessageId:", messageObject.clientMessageId);
@@ -171,6 +177,22 @@ const Chat = () => {
     // Send typing indicator
     sendTypingIndicator(id, false);
   }, [id]);
+
+  // Handle reply
+  const handleReply = useCallback((message) => {
+    setReplyTo(message);
+  }, []);
+
+  // Handle forward
+  const handleForward = useCallback((message) => {
+    setForwardMessage(message);
+    setShowForwardModal(true);
+  }, []);
+
+  // Clear reply
+  const handleClearReply = useCallback(() => {
+    setReplyTo(null);
+  }, []);
   
   return (
     <ChatContainer>
@@ -184,11 +206,23 @@ const Chat = () => {
         currentUserId={user?.id}
         isLoading={isLoading}
         isGroup={false}
+        onReply={handleReply}    // Add this
+        onForward={handleForward} // Add this
       />
       
       <ChatInput 
         onSendMessage={handleSendMessage}
         onTyping={handleTyping}
+        replyTo={replyTo}           // Add this
+        onClearReply={handleClearReply} // Add this
+      />
+      <ForwardMessageModal
+        isOpen={showForwardModal}
+        onClose={() => {
+          setShowForwardModal(false);
+          setForwardMessage(null);
+        }}
+        message={forwardMessage}
       />
     </ChatContainer>
   );

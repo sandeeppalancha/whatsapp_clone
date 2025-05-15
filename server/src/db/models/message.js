@@ -1,13 +1,9 @@
+// server/src/db/models/message.js - Updated
 'use strict';
 const { Model } = require('sequelize');
 
 module.exports = (sequelize, DataTypes) => {
   class Message extends Model {
-    /**
-     * Helper method for defining associations.
-     * This method is not a part of Sequelize lifecycle.
-     * The `models/index` file will call this method automatically.
-     */
     static associate(models) {
       // Define associations
       Message.belongsTo(models.User, {
@@ -28,6 +24,17 @@ module.exports = (sequelize, DataTypes) => {
       Message.hasMany(models.Attachment, {
         foreignKey: 'messageId',
         as: 'attachments'
+      });
+      
+      // Self-association for replies
+      Message.belongsTo(models.Message, {
+        foreignKey: 'replyToId',
+        as: 'replyTo'
+      });
+      
+      Message.hasMany(models.Message, {
+        foreignKey: 'replyToId',
+        as: 'replies'
       });
     }
   }
@@ -61,6 +68,28 @@ module.exports = (sequelize, DataTypes) => {
         key: 'id'
       }
     },
+    replyToId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'Messages',
+        key: 'id'
+      }
+    },
+    isForwarded: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false
+    },
+    originalSenderId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'Users',
+        key: 'id'
+      },
+      comment: 'Original sender for forwarded messages'
+    },
     isRead: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
@@ -70,7 +99,6 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DATE,
       allowNull: true
     },
-    // New fields for WhatsApp-like ticks
     isDelivered: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,

@@ -462,7 +462,7 @@ const handleError = (error) => {
 /**
  * Send a private message
  */
-export const sendPrivateMessage = (to, message, attachments = []) => {
+export const sendPrivateMessage = (to, message, attachments = [], replyToId = null) => {
   console.log("SEND private message", to, message, attachments);
   
   if (!socket || !isConnected) {
@@ -488,7 +488,8 @@ export const sendPrivateMessage = (to, message, attachments = []) => {
     to,
     message,
     messageId: clientMessageId, // Send the clientMessageId to the server
-    attachments: formattedAttachments
+    attachments: formattedAttachments,
+    replyToId
   });
   
   // Store the clientMessageId for tracking

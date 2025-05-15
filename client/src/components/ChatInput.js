@@ -101,7 +101,49 @@ const IconButton = styled.button`
   }
 `;
 
-const ChatInput = ({ onSendMessage, onTyping }) => {
+const ReplyContainer = styled.div`
+  background-color: ${props => props.theme === 'dark' ? '#333' : '#f0f0f0'};
+  border-left: 3px solid #4caf50;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const ReplyContent = styled.div`
+  flex: 1;
+`;
+
+const ReplyHeader = styled.div`
+  font-weight: bold;
+  color: #4caf50;
+  font-size: 0.85em;
+  margin-bottom: 2px;
+`;
+
+const ReplyText = styled.div`
+  color: ${props => props.theme === 'dark' ? '#ccc' : '#666'};
+  font-size: 0.85em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const CloseButton = styled.button`
+  background: none;
+  border: none;
+  color: ${props => props.theme === 'dark' ? '#aaa' : '#666'};
+  cursor: pointer;
+  padding: 4px;
+  
+  &:hover {
+    color: ${props => props.theme === 'dark' ? '#fff' : '#333'};
+  }
+`;
+
+const ChatInput = ({ onSendMessage, onTyping, replyTo, onClearReply }) => {
   const { theme } = useSelector(state => state.ui);
   const [message, setMessage] = useState('');
   const [isUploading, setIsUploading] = useState(false);
@@ -121,11 +163,12 @@ const ChatInput = ({ onSendMessage, onTyping }) => {
     if (message.trim() || attachments.length > 0) {
       console.log("Attachments inside handlesendmessage", attachments);
       
-      if (onSendMessage) onSendMessage(message, attachments);
+      if (onSendMessage) onSendMessage(message, attachments, replyTo?.id);
       setMessage('');
       setAttachments([]);
+      if (onClearReply) onClearReply();
     }
-  }, [message, attachments, onSendMessage]);
+  }, [message, attachments, onSendMessage, replyTo, onClearReply]);
   
   // Handle key press (send on Enter)
   const handleKeyPress = useCallback((e) => {
@@ -277,6 +320,22 @@ const ChatInput = ({ onSendMessage, onTyping }) => {
             </AttachmentPreview>
           ))}
         </AttachmentPreviewContainer>
+      )}
+
+      {replyTo && (
+        <ReplyContainer theme={theme}>
+          <ReplyContent>
+            <ReplyHeader>
+              {replyTo.sender?.username || 'Unknown'}
+            </ReplyHeader>
+            <ReplyText theme={theme}>
+              {replyTo.content || '[Attachment]'}
+            </ReplyText>
+          </ReplyContent>
+          <CloseButton onClick={onClearReply} theme={theme}>
+            <X size={20} />
+          </CloseButton>
+        </ReplyContainer>
       )}
       
       {/* Input controls */}

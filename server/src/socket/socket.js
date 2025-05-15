@@ -100,7 +100,7 @@ function configureSocket(server) {
     // Private message
     socket.on('private_message', async (data) => {
       try {
-        const { to, message, messageId: clientMessageId, attachments = [] } = data;
+        const { to, message, messageId: clientMessageId, attachments = [], replyToId } = data;
         const from = socket.user.id;
         
         console.log('Received private_message with clientMessageId:', clientMessageId);
@@ -118,7 +118,8 @@ function configureSocket(server) {
           receiverId: to,
           isRead: false,
           isDelivered: false,
-          clientMessageId: clientMessageId // Store the client message ID
+          clientMessageId: clientMessageId, // Store the client message ID
+          replyToId: replyToId // Add this
         });
         
         console.log('Created message in database with ID:', newMessage.id, 'and clientMessageId:', clientMessageId);
@@ -140,11 +141,22 @@ function configureSocket(server) {
         }
         
         // Load attachments for the created message
-        const messageWithAttachments = await Message.findByPk(newMessage.id, {
+       const messageWithDetails = await Message.findByPk(newMessage.id, {
           include: [
             {
               model: Attachment,
               as: 'attachments'
+            },
+            {
+              model: Message,
+              as: 'replyTo',
+              include: [
+                {
+                  model: User,
+                  as: 'sender',
+                  attributes: ['id', 'username']
+                }
+              ]
             }
           ]
         });
@@ -158,8 +170,9 @@ function configureSocket(server) {
             from,
             to,
             message: newMessage.content,
-            attachments: messageWithAttachments.attachments,
-            timestamp: newMessage.createdAt
+            attachments: messageWithDetails.attachments,
+            timestamp: newMessage.createdAt,
+            replyTo: messageWithDetails.replyTo
           });
           
           // Mark as delivered immediately since recipient is online

@@ -580,3 +580,128 @@ exports.markGroupMessagesAsRead = async (req, res) => {
     });
   }
 };
+
+/**
+ * Forward a message
+ */
+exports.forwardMessage = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { messageId, to, isGroup } = req.body;
+    
+    // Validate inputs
+    if (!messageId || !to || isGroup === undefined) {
+      return res.status(400).json({
+        message: 'Missing required parameters'
+      });
+    }
+    
+    // Find the original message
+    const originalMessage = await Message.findByPk(messageId, {
+      include: [
+        {
+          model: Attachment,
+          as: 'attachments'
+        },
+        {
+          model: User,
+          as: 'sender',
+          attributes: ['id', 'username']
+        }
+      ]
+    });
+    
+    if (!originalMessage) {
+      return res.status(404).json({
+        message: 'Message not found'
+      });
+    }
+    
+    // Create forwarded message data
+    const forwardedMessageData = {
+      content: originalMessage.content,
+      senderId: userId,
+      isForwarded: true,
+      originalSenderId: originalMessage.senderId
+    };
+    
+    // Set receiver or group based on isGroup flag
+    if (isGroup) {
+      // Check if user is member of the group
+      const group = await Group.findOne({
+        where: { id: to },
+        include: [
+          {
+            model: User,
+            as: 'members',
+            where: { id: userId },
+            required: true
+          }
+        ]
+      });
+      
+      if (!group) {
+        return res.status(403).json({
+          message: 'You are not a member of this group'
+        });
+      }
+      
+      forwardedMessageData.groupId = to;
+    } else {
+      // Check if receiver exists
+      const receiver = await User.findByPk(to);
+      
+      if (!receiver) {
+        return res.status(404).json({
+          message: 'Receiver not found'
+        });
+      }
+      
+      forwardedMessageData.receiverId = to;
+    }
+    
+    // Create the forwarded message
+    const forwardedMessage = await Message.create(forwardedMessageData);
+    
+    // Copy attachments to the forwarded message
+    if (originalMessage.attachments && originalMessage.attachments.length > 0) {
+      const attachmentCopies = originalMessage.attachments.map(att => ({
+        messageId: forwardedMessage.id,
+        fileName: att.fileName,
+        fileType: att.fileType,
+        fileSize: att.fileSize,
+        filePath: att.filePath,
+        fileKey: att.fileKey,
+        uploadedBy: userId,
+        isTemporary: false
+      }));
+      
+      await Attachment.bulkCreate(attachmentCopies);
+    }
+    
+    // Fetch the complete forwarded message
+    const completeMessage = await Message.findByPk(forwardedMessage.id, {
+      include: [
+        {
+          model: Attachment,
+          as: 'attachments'
+        },
+        {
+          model: User,
+          as: 'sender',
+          attributes: ['id', 'username', 'profilePicture']
+        }
+      ]
+    });
+    
+    res.json({
+      message: 'Message forwarded successfully',
+      forwardedMessage: completeMessage
+    });
+  } catch (error) {
+    console.error('Forward message error:', error);
+    res.status(500).json({
+      message: 'Server error while forwarding message'
+    });
+  }
+};

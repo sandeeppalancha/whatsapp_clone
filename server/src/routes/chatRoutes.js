@@ -23,4 +23,7 @@ router.get('/messages/unread', chatController.getUnreadMessageCount);
 router.put('/messages/:id/read', chatController.markMessageAsRead);
 router.put('/messages/group/:groupId/read', chatController.markGroupMessagesAsRead);
 
+// Forward message
+router.post('/messages/forward', chatController.forwardMessage);
+
 module.exports = router;

@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { useSelector } from 'react-redux';
-import { Check, CheckCheck } from 'lucide-react';
+import { Check, CheckCheck, Reply, Forward  } from 'lucide-react';
 import ImagePreview from './ImagePreview';
 
 const ListContainer = styled.div`
@@ -54,6 +54,10 @@ const MessageBubble = styled.div`
     border-bottom-left-radius: 5px;
     margin-right: auto;
   `}
+
+  &:hover .message-actions {
+    display: flex;
+  }
 `;
 
 const SenderName = styled.div`
@@ -161,7 +165,75 @@ const NoMessages = styled.div`
   padding: 20px;
 `;
 
-const MessageList = ({ messages, currentUserId, isLoading, isGroup }) => {
+const MessageWrapper = styled.div`
+  position: relative;
+  transition: background-color 0.3s ease;
+`;
+
+const MessageActions = styled.div`
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: none;
+  gap: 5px;
+  z-index: 10;
+`;
+
+const ActionButton = styled.button`
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: ${props => props.theme === 'dark' ? '#aaa' : '#666'};
+  padding: 4px;
+  border-radius: 4px;
+  
+  &:hover {
+    background-color: ${props => props.theme === 'dark' ? '#555' : '#e8e8e8'};
+    color: ${props => props.theme === 'dark' ? '#fff' : '#333'};
+  }
+`;
+
+const ReplyIndicator = styled.div`
+  background-color: ${props => props.theme === 'dark' ? '#404040' : '#f0f0f0'};
+  border-left: 3px solid #4caf50;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  border-radius: 5px;
+  font-size: 0.85em;
+  cursor: pointer;
+  
+  &:hover {
+    background-color: ${props => props.theme === 'dark' ? '#4a4a4a' : '#e8e8e8'};
+  }
+`;
+
+const ReplyHeader = styled.div`
+  font-weight: bold;
+  color: #4caf50;
+  margin-bottom: 4px;
+`;
+
+const ReplyContent = styled.div`
+  color: ${props => props.theme === 'dark' ? '#ccc' : '#666'};
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const ForwardIndicator = styled.div`
+  display: flex;
+  align-items: center;
+  color: ${props => props.theme === 'dark' ? '#aaa' : '#666'};
+  font-size: 0.8em;
+  margin-bottom: 5px;
+  font-style: italic;
+  
+  svg {
+    margin-right: 5px;
+  }
+`;
+
+const MessageList = ({ messages, currentUserId, isLoading, isGroup, onReply, onForward }) => {
   const { theme } = useSelector(state => state.ui);
   const messagesEndRef = useRef(null);
   const [processedMessages, setProcessedMessages] = useState([]);
@@ -401,6 +473,21 @@ const MessageList = ({ messages, currentUserId, isLoading, isGroup }) => {
   
   const messageGroups = groupMessagesByDate();
   
+  const scrollToMessage = (messageId) => {
+  const element = document.getElementById(`message-${messageId}`);
+  if (element) {
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Highlight the message briefly
+    element.style.backgroundColor = theme === 'dark' ? '#444' : '#ffe082';
+    setTimeout(() => {
+      element.style.backgroundColor = '';
+    }, 2000);
+  }
+};
+
+console.log("messageGroups", messageGroups);
+
+
   return (
     <ListContainer theme={theme}>
       {messageGroups.map(group => (
@@ -416,8 +503,38 @@ const MessageList = ({ messages, currentUserId, isLoading, isGroup }) => {
                 isSent={isSent}
                 theme={theme}
               >
+                <MessageActions className="message-actions" theme={theme}>
+                  <ActionButton onClick={() => onReply(message)} theme={theme}>
+                    <Reply size={16} />
+                  </ActionButton>
+                  <ActionButton onClick={() => onForward(message)} theme={theme}>
+                    <Forward size={16} />
+                  </ActionButton>
+                </MessageActions>
+
                 {isGroup && !isSent && message.sender && (
                   <SenderName>{message.sender.username}</SenderName>
+                )}
+
+                {message.replyTo?.id && (
+                  <ReplyIndicator 
+                    theme={theme}
+                    onClick={() => scrollToMessage(message.replyTo.id)}
+                  >
+                    <ReplyHeader>
+                      {message.replyTo.sender?.username || 'Unknown'}
+                    </ReplyHeader>
+                    <ReplyContent theme={theme}>
+                      {message.replyTo.content || '[Attachment]'}
+                    </ReplyContent>
+                  </ReplyIndicator>
+                )}
+
+                {message.isForwarded && (
+                  <ForwardIndicator theme={theme}>
+                    <Forward size={14} />
+                    Forwarded{message.originalSender && ` from ${message.originalSender.username}`}
+                  </ForwardIndicator>
                 )}
                 
                 <MessageContent>{message.content}</MessageContent>

@@ -143,6 +143,14 @@ const getAllUsers = () => {
   return apiClient.get('/users/all');
 };
 
+const forwardMessage = ({ messageId, to, isGroup }) => {
+  return apiClient.post('/messages/forward', {
+    messageId,
+    to,
+    isGroup
+  });
+};
+
 export default {
   // Existing methods
   getContacts,
@@ -178,5 +186,6 @@ export default {
   addGroupMember,
   removeGroupMember,
   leaveGroup,
-  deleteGroup
+  deleteGroup,
+  forwardMessage
 };
