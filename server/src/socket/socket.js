@@ -231,7 +231,7 @@ function configureSocket(server) {
     // Group message
     socket.on('group_message', async (data) => {
       try {
-        const { groupId, message, messageId: clientMessageId, attachments = [] } = data;
+        const { groupId, message, messageId: clientMessageId, attachments = [], replyToId } = data;
         const from = socket.user.id;
         
         // Validate parameters
@@ -258,14 +258,15 @@ function configureSocket(server) {
           return;
         }
         
-        // Save message to database
+        // Save message to database with replyToId
         const newMessage = await Message.create({
-          content: message || '', // Allow empty content if there are attachments
+          content: message || '',
           senderId: from,
           groupId,
           isRead: false,
-          isDelivered: false, // Track delivery status
-          clientMessageId: clientMessageId
+          isDelivered: false,
+          clientMessageId: clientMessageId,
+          replyToId: replyToId // Add this line
         });
         
         // Process attachments if any
@@ -280,7 +281,7 @@ function configureSocket(server) {
           );
         }
         
-        // Load attachments and sender info for the created message
+        // Load attachments, sender info, and reply details for the created message
         const messageWithDetails = await Message.findByPk(newMessage.id, {
           include: [
             {
@@ -291,11 +292,22 @@ function configureSocket(server) {
               model: User,
               as: 'sender',
               attributes: ['id', 'username', 'profilePicture']
+            },
+            {
+              model: Message,
+              as: 'replyTo',
+              include: [
+                {
+                  model: User,
+                  as: 'sender',
+                  attributes: ['id', 'username']
+                }
+              ]
             }
           ]
         });
         
-        // Get all group members
+        // Get all group members and emit to them
         const fullGroup = await Group.findByPk(groupId, {
           include: [
             {
@@ -327,76 +339,22 @@ function configureSocket(server) {
                   sender: messageWithDetails.sender,
                   message: newMessage.content,
                   attachments: messageWithDetails.attachments,
-                  timestamp: newMessage.createdAt
+                  timestamp: newMessage.createdAt,
+                  replyTo: messageWithDetails.replyTo // Add this line
                 });
-
-                const hasAttachments = messageWithDetails.attachments.length > 0;
-                const notificationMessage = hasAttachments 
-                  ? (message ? `${message} [Attachment]` : 'Sent an attachment')
-                  : message;
-                
-                sendPushNotification(
-                  member.id, 
-                  from, 
-                  notificationMessage, 
-                  group.name, 
-                  true,
-                  hasAttachments
-                );
-              } else {
-                // Send push notification to offline members
-                // Include attachment info in the notification
-                const hasAttachments = messageWithDetails.attachments.length > 0;
-                const notificationMessage = hasAttachments 
-                  ? (message ? `${message} [Attachment]` : 'Sent an attachment')
-                  : message;
-                
-                sendPushNotification(
-                  member.id, 
-                  from, 
-                  notificationMessage, 
-                  group.name, 
-                  true,
-                  hasAttachments
-                );
               }
             }
           });
         }
         
-        // Track delivery status for online members
-        if (onlineMembers.length > 0) {
-          // Create group message delivery records
-          await Promise.all(onlineMembers.map(memberId => {
-            return createGroupMessageDelivery(newMessage.id, memberId);
-          }));
-          
-          // Update message as delivered to some members
-          newMessage.isDelivered = true;
-          newMessage.deliveredAt = new Date();
-          await newMessage.save();
-        }
-
-        console.log('Sending group_message_ack with clientMessageId:', clientMessageId, 'and messageId:', newMessage.id);
-        
-        // Acknowledge message received by server
+        // Send acknowledgment back to sender with reply details
         socket.emit('group_message_ack', { 
           clientMessageId: clientMessageId,
           messageId: newMessage.id,
           groupId: groupId,
-          status: 'sent' 
+          status: 'sent',
+          replyTo: messageWithDetails.replyTo // Add this line
         });
-        
-        // Send delivery status update if some members are online
-        if (onlineMembers.length > 0) {
-          socket.emit('group_message_delivered', {
-            clientMessageId: clientMessageId,
-            messageId: newMessage.id,
-            groupId: groupId,
-            deliveredTo: onlineMembers,
-            timestamp: newMessage.deliveredAt
-          });
-        }
       } catch (error) {
         console.error('Group message error:', error);
         socket.emit('error', { 

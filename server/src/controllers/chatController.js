@@ -313,6 +313,17 @@ exports.getPrivateMessages = async (req, res) => {
         {
           model: Attachment,
           as: 'attachments'
+        },
+        {
+          model: Message,
+          as: 'replyTo',
+          include: [
+            {
+              model: User,
+              as: 'sender',
+              attributes: ['id', 'username']
+            }
+          ]
         }
       ],
       order: [['createdAt', 'ASC']]
@@ -388,6 +399,17 @@ exports.getGroupMessages = async (req, res) => {
         {
           model: Attachment,
           as: 'attachments'
+        },
+        {
+          model: Message,
+          as: 'replyTo',
+          include: [
+            {
+              model: User,
+              as: 'sender',
+              attributes: ['id', 'username']
+            }
+          ]
         }
       ],
       order: [['createdAt', 'ASC']]

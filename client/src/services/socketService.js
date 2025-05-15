@@ -251,9 +251,9 @@ const handlePrivateMessage = (data) => {
  * Handle incoming group message
  */
 const handleGroupMessage = (data) => {
-  const { id, groupId, from, sender, message, attachments, timestamp } = data;
-  
-  console.log('Received group message:', data);
+    const { id, groupId, from, sender, message, attachments, timestamp, replyTo } = data;
+    
+    console.log('Received group message with reply:', data);
     
     // Add message to Redux
     store.dispatch(
@@ -262,13 +262,15 @@ const handleGroupMessage = (data) => {
         isGroup: true,
         message: {
           id: data.id,
-          clientMessageId: data.clientMessageId, // Store the client ID if provided
+          clientMessageId: data.clientMessageId,
           content: data.message,
           senderId: data.from,
           sender: data.sender,
           attachments: data.attachments || [],
           timestamp: data.timestamp || new Date().toISOString(),
-          status: 'received'
+          status: 'received',
+          replyTo: data.replyTo, // Add this line
+          replyToId: data.replyTo?.id // Add this line for consistency
         }
       })
     );
@@ -505,7 +507,7 @@ export const sendPrivateMessage = (to, message, attachments = [], replyToId = nu
 /**
  * Send a group message
  */
-export const sendGroupMessage = (groupId, message, attachments = []) => {
+export const sendGroupMessage = (groupId, message, attachments = [], replyToId = null) => {
   console.log("SEND group message", groupId, message, attachments);
   
   if (!socket || !isConnected) {
@@ -526,12 +528,13 @@ export const sendGroupMessage = (groupId, message, attachments = []) => {
     filePath: att.filePath
   }));
   
-  // Send message to server with the client message ID
+  // Send message to server with the client message ID and replyToId
   socket.emit('group_message', {
     groupId,
     message,
-    messageId: clientMessageId, // Send clientMessageId to server
-    attachments: formattedAttachments
+    messageId: clientMessageId,
+    attachments: formattedAttachments,
+    replyToId: replyToId // Add this line
   });
   
   // Store for tracking
@@ -540,7 +543,7 @@ export const sendGroupMessage = (groupId, message, attachments = []) => {
   }
   window.messageTracker[clientMessageId] = { groupId, timestamp: Date.now() };
   
-  return clientMessageId; // Return the ID for client-side tracking
+  return clientMessageId;
 };
 
 /**

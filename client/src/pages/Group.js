@@ -15,6 +15,7 @@ import { fetchMessages, setActiveConversation, addMessage } from '../redux/slice
 // Import services
 import { sendGroupMessage, sendTypingIndicator } from '../services/socketService';
 import chatService from '../services/chatService';
+import ForwardMessageModal from '../components/ForwardMessageModal';
 
 const GroupContainer = styled.div`
   display: flex;
@@ -30,6 +31,10 @@ const Group = () => {
   const { messages, conversations, isLoading } = useSelector(state => state.chat);
   const [groupInfo, setGroupInfo] = useState(null);
   const [hasMarkedAsRead, setHasMarkedAsRead] = useState(false);
+
+  const [replyTo, setReplyTo] = useState(null);
+    const [forwardMessage, setForwardMessage] = useState(null);
+    const [showForwardModal, setShowForwardModal] = useState(false);
   
   // Get message key for this group
   const messageKey = `group_${id}`;
@@ -86,29 +91,31 @@ const Group = () => {
     }
   }, [id, conversationMessages, hasMarkedAsRead]);
   
-  const handleSendMessage = useCallback((message, attachments = []) => {
+  const handleSendMessage = useCallback((message, attachments = [], replyToId = null) => {
     console.log("Starting handleSendMessage for group chat");
     
     if (!message.trim() && attachments.length === 0) return;
     
     // Send message through socket first to get the clientMessageId
-    const clientMessageId = sendGroupMessage(id, message, attachments);
+    const clientMessageId = sendGroupMessage(id, message, attachments, replyToId);
     
     console.log("Sent group message and received clientMessageId:", clientMessageId);
     
     if (!clientMessageId) {
       console.error("❌ Failed to get clientMessageId from sendGroupMessage");
-      return; // Don't proceed if we couldn't get an ID
+      return;
     }
     
     // Create message object with the same clientMessageId
     const messageObject = {
-      clientMessageId: clientMessageId, // Use the SAME ID that was sent to the server
+      clientMessageId: clientMessageId,
       content: message,
       senderId: user?.id,
       attachments,
       timestamp: new Date().toISOString(),
-      status: 'sending'  // Initial status
+      status: 'sending',
+      replyToId: replyToId,
+      replyTo: replyTo // Include the full replyTo object for immediate display
     };
     
     console.log("Created group message object with clientMessageId:", messageObject.clientMessageId);
@@ -116,37 +123,34 @@ const Group = () => {
     // Add message to local state
     dispatch(addMessage({
       conversationId: id,
-      isGroup: true, // Mark as group message
+      isGroup: true,
       message: messageObject
     }));
     
-    // Debug check to verify the message was added with the correct ID
-    setTimeout(() => {
-      const state = window.store?.getState();
-      if (!state) {
-        console.error("Could not access Redux store");
-        return;
-      }
-      
-      const messageKey = `group_${id}`; // Note the group_ prefix for group chats
-      const messages = state.chat.messages[messageKey] || [];
-      
-      const addedMessage = messages.find(msg => msg.clientMessageId === clientMessageId);
-      if (addedMessage) {
-        console.log("✅ Group message successfully added to Redux with clientMessageId:", addedMessage.clientMessageId);
-        console.log("Message status:", addedMessage.status);
-      } else {
-        console.error("❌ Group message not found in Redux after adding");
-        console.log("Available client message IDs:", messages.map(m => m.clientMessageId));
-      }
-    }, 100);
-    
-  }, [dispatch, id, user?.id]);
+    // Clear the reply state
+    setReplyTo(null);
+  }, [dispatch, id, user?.id, replyTo]);
   
   const handleTyping = useCallback(() => {
     // Send typing indicator
     sendTypingIndicator(id, true);
   }, [id]);
+
+   // Handle reply
+    const handleReply = useCallback((message) => {
+      setReplyTo(message);
+    }, []);
+  
+    // Handle forward
+    const handleForward = useCallback((message) => {
+      setForwardMessage(message);
+      setShowForwardModal(true);
+    }, []);
+  
+    // Clear reply
+    const handleClearReply = useCallback(() => {
+      setReplyTo(null);
+    }, []);
   
   return (
     <GroupContainer>
@@ -160,11 +164,24 @@ const Group = () => {
         currentUserId={user?.id}
         isLoading={isLoading}
         isGroup={true}
+        onReply={handleReply}    // Add this
+        onForward={handleForward} // Add this
       />
       
       <ChatInput 
         onSendMessage={handleSendMessage}
         onTyping={handleTyping}
+        replyTo={replyTo}           // Add this
+        onClearReply={handleClearReply} // Add this
+      />
+
+      <ForwardMessageModal
+        isOpen={showForwardModal}
+        onClose={() => {
+          setShowForwardModal(false);
+          setForwardMessage(null);
+        }}
+        message={forwardMessage}
       />
     </GroupContainer>
   );

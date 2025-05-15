@@ -2,7 +2,7 @@
   "development": {
     "username": "postgres",
     "password": "postgres",
-    "database": "chat_app",
+    "database": "graviti_synapse",
     "host": "18.60.156.218",
     "dialect": "postgres"
   },
