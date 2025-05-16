@@ -12,6 +12,10 @@ const Bubble = styled.div`
   position: relative;
   word-wrap: break-word;
   padding-bottom: 28px; /* Make room for timestamp and actions */
+
+  @media (min-width: 768px) {
+    max-width: min(500px, 70%); /* Use 500px or 70%, whichever is smaller */
+  }
   
   ${props => props.isSent ? `
     background-color: ${props.theme === 'dark' ? '#2a5885' : 'rgb(217, 253, 211)'};

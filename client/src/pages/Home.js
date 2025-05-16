@@ -1,7 +1,7 @@
-// client/src/pages/Home.js - Updated with WhatsApp-like styling
+// client/src/pages/Home.js - Updated for responsive design
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { Plus, UserPlus, Users, MessageCircle, MoreVertical, Search, MessageSquarePlus } from 'lucide-react';
 
@@ -14,8 +14,14 @@ import NewChatModal from '../components/NewChatModal';
 // Import Redux actions
 import { fetchConversations, fetchContacts, addConversation } from '../redux/slices/chatSlice';
 
+// Check if mobile view based on screen size or platform
+const isMobileView = () => {
+  return window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
 const HomeContainer = styled.div`
   display: flex;
+  flex-direction: column;
   height: 100%;
   width: 100%;
 `;
@@ -24,11 +30,12 @@ const HeaderContainer = styled.div`
   position: sticky;
   top: 0;
   z-index: 10;
-  // background-color: ${props => props.theme === 'dark' ? '#1e1e1e' : '#075E54'};
   padding: 10px 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background-color: ${props => props.theme === 'dark' ? '#1e1e1e' : '#f8f8f8'};
+  border-bottom: 1px solid ${props => props.theme === 'dark' ? '#2a2a2a' : '#e0e0e0'};
 `;
 
 const HeaderTitle = styled.h1`
@@ -64,12 +71,12 @@ const ContentContainer = styled.div`
 
 const FloatingActionButton = styled.button`
   position: fixed;
-  bottom: 70px; /* Above bottom nav */
+  bottom: ${props => props.isMobile ? '70px' : '20px'};
   right: 20px;
   width: 56px;
   height: 56px;
-  border-radius: 12px; /* Rounded square like WhatsApp */
-  background-color: #128c7e; /* WhatsApp green color */
+  border-radius: 12px;
+  background-color: #128c7e;
   color: white;
   display: flex;
   align-items: center;
@@ -78,6 +85,10 @@ const FloatingActionButton = styled.button`
   cursor: pointer;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   z-index: 100;
+
+  @media (min-width: 768px) {
+    right: calc(100% - 350px - 20px); /* 350px is sidebar width, 20px is right padding */
+  }
   
   &:hover {
     background-color: #075E54;
@@ -86,13 +97,18 @@ const FloatingActionButton = styled.button`
 
 const ActionMenu = styled.div`
   position: absolute;
-  bottom: 110px;
+  bottom: ${props => props.isMobile ? '110px' : '60px'};
   right: 20px;
   background-color: ${props => props.theme === 'dark' ? '#1e1e1e' : '#fff'};
   border-radius: 8px;
   box-shadow: 0px 2px 12px rgba(0, 0, 0, 0.45);
   overflow: hidden;
   width: 180px;
+
+  /* Add this media query */
+  @media (min-width: 768px) {
+    right: calc(100% - 350px - 20px); /* Align with FAB */
+  }
 `;
 
 const MenuItem = styled.button`
@@ -124,7 +140,17 @@ const Home = () => {
   const [showMenu, setShowMenu] = useState(false);
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [showNewChatModal, setShowNewChatModal] = useState(false);
-
+  const [mobile, setMobile] = useState(isMobileView());
+  
+  // Update mobile state on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setMobile(isMobileView());
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   useEffect(() => {
     // Fetch conversations and contacts on component mount
@@ -194,12 +220,12 @@ const Home = () => {
         />
       </ContentContainer>
       
-      <FloatingActionButton onClick={toggleMenu}>
+      <FloatingActionButton onClick={toggleMenu} isMobile={mobile}>
         <MessageSquarePlus size={24} />
       </FloatingActionButton>
       
       {showMenu && (
-        <ActionMenu theme={theme}>
+        <ActionMenu theme={theme} isMobile={mobile}>
           <MenuItem onClick={handleNewChat} theme={theme}>
             <UserPlus size={20} />
             New Chat

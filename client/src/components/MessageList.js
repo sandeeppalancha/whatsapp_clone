@@ -14,6 +14,10 @@ const ListContainer = styled.div`
   display: flex;
   flex-direction: column;
   height: 0; /* Add this to ensure flex growing works */
+
+  @media (min-width: 768px) {
+    padding: 30px 80px; /* Use 500px or 70%, whichever is smaller */
+  }
 `;
 
 const MessageGroup = styled.div`
@@ -41,6 +45,10 @@ const MessageBubble = styled.div`
   position: relative;
   word-wrap: break-word;
   padding-bottom: 15px; /* Make room for timestamp */
+
+  @media (min-width: 768px) {
+    max-width: min(500px, 70%); /* Use 500px or 70%, whichever is smaller */
+  }
   
   ${props => props.isSent ? `
     // background-color: ${props.theme === 'dark' ? '#2a5885' : '#e3f2fd'};
