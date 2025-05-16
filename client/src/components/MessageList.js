@@ -508,6 +508,7 @@ console.log("messageGroups", messageGroups);
             return (
               <MessageBubble 
                 key={messageId}
+                id={`message-${messageId}`}
                 isSent={isSent}
                 theme={theme}
               >
