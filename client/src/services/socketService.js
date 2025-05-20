@@ -210,7 +210,9 @@ const handlePrivateMessage = (data) => {
         senderId: from,
         attachments: attachments || [],
         timestamp: timestamp || new Date().toISOString(),
-        status: 'received'
+        status: 'received',
+        replyTo: data.replyTo, // Make sure this is here
+        replyToId: data.replyTo?.id // And this as well for consistency
       }
     })
   );

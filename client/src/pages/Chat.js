@@ -116,8 +116,7 @@ const Chat = () => {
   }, [id, conversationMessages, hasMarkedAsRead]);
   
   const handleSendMessage = useCallback((message, attachments = [], replyToId = null) => {
-    console.log("Starting handleSendMessage");
-    
+  
     if (!message.trim() && attachments.length === 0) return;
     
     // Send message through socket first to get the clientMessageId
@@ -138,7 +137,8 @@ const Chat = () => {
       attachments,
       timestamp: new Date().toISOString(),
       status: 'sending',  // Initial status
-      replyToId: replyToId
+      replyToId: replyToId,
+      replyTo: replyTo
     };
     
     console.log("Created message object with clientMessageId:", messageObject.clientMessageId);
@@ -149,6 +149,9 @@ const Chat = () => {
       isGroup: false,
       message: messageObject
     }));
+    
+    // Clear reply after sending
+    setReplyTo(null);
     
     // Debug check to verify the message was added with the correct ID
     setTimeout(() => {
@@ -171,7 +174,7 @@ const Chat = () => {
       }
     }, 100);
     
-  }, [dispatch, id, user?.id]);
+  }, [dispatch, id, user?.id, replyTo]);
   
   const handleTyping = useCallback(() => {
     // Send typing indicator
@@ -179,9 +182,18 @@ const Chat = () => {
   }, [id]);
 
   // Handle reply
-  const handleReply = useCallback((message) => {
-    setReplyTo(message);
-  }, []);
+  const handleReply = useCallback((message) => {    
+    const replyMessage = {
+      ...message,
+      sender: message.sender || {
+        id: message.senderId,
+        username: message.senderId === user?.id ? 'You' : 
+                (recipient?.username || 'Unknown')
+      }
+    };
+
+    setReplyTo(replyMessage);
+  }, [recipient]);
 
   // Handle forward
   const handleForward = useCallback((message) => {
@@ -193,6 +205,9 @@ const Chat = () => {
   const handleClearReply = useCallback(() => {
     setReplyTo(null);
   }, []);
+
+  console.log("recipe", recipient);
+  
   
   return (
     <ChatContainer>

@@ -138,8 +138,35 @@ const Group = () => {
 
    // Handle reply
     const handleReply = useCallback((message) => {
-      setReplyTo(message);
-    }, []);
+      // For group chats, ensure we have complete sender info
+      let senderName = 'Unknown';
+      
+      // If it's the current user
+      if (message.senderId === user?.id) {
+        senderName = 'You';
+      } 
+      // If the message already has a sender object with username
+      else if (message.sender && message.sender.username) {
+        senderName = message.sender.username;
+      } 
+      // Try to find the sender in group members
+      else if (groupInfo && groupInfo.members) {
+        const sender = groupInfo.members.find(m => m.id === message.senderId);
+        if (sender) {
+          senderName = sender.username;
+        }
+      }
+      
+      const replyMessage = {
+        ...message,
+        sender: message.sender || {
+          id: message.senderId,
+          username: senderName
+        }
+      };
+      
+      setReplyTo(replyMessage);
+    }, [user?.id, groupInfo]);
   
     // Handle forward
     const handleForward = useCallback((message) => {

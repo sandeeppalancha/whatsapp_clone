@@ -74,6 +74,7 @@ const MainContainer = styled.div`
   display: ${props => props.isMobile && props.showSidebar ? 'none' : 'flex'};
   flex-direction: column;
   flex: 1;
+  width: 100%;
   
   /* Desktop layout */
   @media (min-width: 768px) {
