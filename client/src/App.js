@@ -49,7 +49,7 @@ const ContentContainer = styled.div`
   flex: 1;
   overflow: hidden;
   padding-bottom: ${props => props.showBottomNav ? '60px' : '0'};
-  
+  display: flex;
   /* Desktop layout */
   @media (min-width: 768px) {
     display: flex;
@@ -143,14 +143,19 @@ const NavigationController = ({ children }) => {
   // Hide it on chat and group pages on mobile
   const isChatRoute = location.pathname.startsWith('/chat/');
   const isGroupRoute = location.pathname.startsWith('/group/');
+
+  const isProfileRoute = location.pathname === '/profile';  // Add this line
+  const isSettingsRoute = location.pathname === '/settings';  // Add this line
+
   const isInChatView = isChatRoute || isGroupRoute;
   
   // On mobile, bottom nav is shown if not in chat view
   // On desktop, bottom nav is never shown
   const showBottomNav = isAuthenticated && !isInChatView && mobile;
   
+  const isInSpecificView = isChatRoute || isGroupRoute || isProfileRoute || isSettingsRoute;
   // Show sidebar (conversation list) based on route
-  const showSidebar = !isInChatView;
+  const showSidebar = !isInSpecificView;
   
   // Render content based on route and device type
   const renderContent = () => {
@@ -174,6 +179,10 @@ const NavigationController = ({ children }) => {
         >
           {isInChatView ? (
             children
+          ) : isProfileRoute ? (
+            <Profile />
+          ) : isSettingsRoute ? (
+            <Settings />
           ) : (
             !mobile && <EmptyState theme={theme} />
           )}

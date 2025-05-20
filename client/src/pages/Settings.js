@@ -169,6 +169,7 @@ const Button = styled.button`
   border-radius: 5px;
   cursor: pointer;
   font-size: 1em;
+  margin-top: 8px;
   
   ${props => props.primary && `
     background-color: #4caf50;
@@ -358,7 +359,7 @@ const Settings = () => {
       // Call API to update password
       const response = await userService.changePassword(passwordData);
             
-      if(response.res.data.success) {
+      if(response.data.success) {
         setPasswordSuccess('Password updated successfully');
         setPasswordData({
           currentPassword: '',
@@ -383,7 +384,7 @@ const Settings = () => {
       </SettingsHeader>
       
       <SettingsContent>
-        <SettingsSection theme={theme}>
+        {/* <SettingsSection theme={theme}>
           <SectionTitle theme={theme}>
             {theme === 'dark' ? <Moon size={22} /> : <Sun size={22} />}
             Appearance
@@ -405,9 +406,9 @@ const Settings = () => {
               <SwitchSlider theme={theme} />
             </Switch>
           </SettingItem>
-        </SettingsSection>
+        </SettingsSection> */}
         
-        <SettingsSection theme={theme}>
+        {/* <SettingsSection theme={theme}>
           <SectionTitle theme={theme}>
             <Bell size={22} />
             Notifications
@@ -446,7 +447,7 @@ const Settings = () => {
               <SwitchSlider theme={theme} />
             </Switch>
           </SettingItem>
-        </SettingsSection>
+        </SettingsSection> */}
         
         {/* <SettingsSection theme={theme}>
           <SectionTitle theme={theme}>
@@ -586,7 +587,7 @@ const Settings = () => {
             </Button>
           </SettingItem>
           
-          <SettingItem theme={theme}>
+          {/* <SettingItem theme={theme}>
             <div>
               <SettingLabel theme={theme}>Delete Account</SettingLabel>
               <SettingDescription theme={theme}>
@@ -597,7 +598,7 @@ const Settings = () => {
               <Trash2 size={18} />
               Delete
             </Button>
-          </SettingItem>
+          </SettingItem> */}
         </SettingsSection>
       </SettingsContent>
       

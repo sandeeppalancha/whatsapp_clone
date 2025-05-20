@@ -171,6 +171,12 @@ const NoMessages = styled.div`
   text-align: center;
   color: ${props => props.theme === 'dark' ? '#aaa' : '#777'};
   padding: 20px;
+  margin: auto; /* Add this to center vertically */
+  /* Optional: add these to ensure it fills the space */
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 `;
 
 const MessageWrapper = styled.div`

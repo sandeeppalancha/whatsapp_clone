@@ -71,7 +71,7 @@ const ContentContainer = styled.div`
 
 const FloatingActionButton = styled.button`
   position: fixed;
-  bottom: ${props => props.isMobile ? '70px' : '20px'};
+  bottom: ${props => props.isMobile ? '88px' : '60px'};
   right: 20px;
   width: 56px;
   height: 56px;

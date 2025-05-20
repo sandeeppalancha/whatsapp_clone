@@ -9,7 +9,7 @@ const NavContainer = styled.div`
   bottom: 0;
   left: 0;
   right: 0;
-  height: 60px;
+  height: 72px;
   background-color: ${props => props.theme === 'dark' ? '#1a1a1a' : '#f8f8f8'};
   border-top: 1px solid ${props => props.theme === 'dark' ? '#2a2a2a' : '#e0e0e0'};
   display: flex;
@@ -47,7 +47,7 @@ const IconWrapper = styled.div`
 
 const GreenHalo = styled.div`
   position: absolute;
-  top: 0px;
+  top: 4px;
   left: 50%;
   transform: translateX(-50%);
   width: 56px;

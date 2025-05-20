@@ -72,6 +72,7 @@ const MessageInput = styled.input`
   background-color: ${props => props.theme === 'dark' ? '#333' : '#fff'};
   color: ${props => props.theme === 'dark' ? '#f5f5f5' : '#333'};
   margin: 0 10px;
+  font-size: 16px;
   
   &:focus {
     outline: none;

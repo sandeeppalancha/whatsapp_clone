@@ -186,13 +186,13 @@ const Login = () => {
           </FormGroup>
           
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? 'Logging in...' : 'Next'}
+            {isLoading ? 'Logging in...' : 'Login'}
           </Button>
         </Form>
         
-        <RegisterLink theme={theme}>
+        {/* <RegisterLink theme={theme}>
           Don't have an account? <Link to="/register">Register</Link>
-        </RegisterLink>
+        </RegisterLink> */}
       </FormContainer>
     </LoginContainer>
   );
