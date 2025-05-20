@@ -17,7 +17,7 @@ const LoginContainer = styled.div`
   padding: 20px;
   background-color: ${props => props.theme === 'dark' ? '#121212' : '#FFFFFF'};
   color: ${props => props.theme === 'dark' ? '#f5f5f5' : '#333'};
-  margin: auto;
+  width: 100%;
 `;
 
 const Logo = styled.div`
