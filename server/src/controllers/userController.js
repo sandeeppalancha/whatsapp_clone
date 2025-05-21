@@ -78,6 +78,8 @@ exports.updateProfile = async (req, res) => {
  * Store push notification token
  */
 exports.storePushToken = async (req, res) => {
+  console.log("Store push token", req.body);
+  
   try {
     const userId = req.user.id;
     const { token, platform } = req.body;  // Now accepting platform in the request
