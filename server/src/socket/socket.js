@@ -865,9 +865,9 @@ async function sendPushNotification(userId, senderId, message, groupName = null,
   console.log("inside sockets sendPushNotification");
   
   try {
-    // Get recipient
+    // Get recipient with devicePlatform field (added for iOS support)
     const user = await User.findByPk(userId, {
-      attributes: ['id', 'username', 'pushToken']
+      attributes: ['id', 'username', 'pushToken', 'devicePlatform']
     });
     
     if (!user) {
@@ -896,7 +896,7 @@ async function sendPushNotification(userId, senderId, message, groupName = null,
     // Create unique conversation ID
     const conversationId = isGroup ? `group_${groupName}` : `user_${senderId}`;
     
-    // Data payload
+    // Data payload - same for both platforms
     const data = {
       type: 'message',
       senderId: senderId.toString(),
@@ -905,12 +905,18 @@ async function sendPushNotification(userId, senderId, message, groupName = null,
       messageId: Math.random().toString(36).substr(2, 9)
     };
     
-    // Send notification
+    // Log which platform we're sending to (if available)
+    if (user.devicePlatform) {
+      console.log(`Sending push notification to ${user.username} on ${user.devicePlatform} device`);
+    }
+    
+    // Send notification via Firebase service - it already handles the token
     const result = await firebaseService.sendPushNotification(
       userId,
       user.pushToken,
       { title, body },
-      data
+      data,
+      user.devicePlatform // Pass platform to firebaseService for platform-specific formatting
     );
     
     if (result) {
@@ -923,4 +929,5 @@ async function sendPushNotification(userId, senderId, message, groupName = null,
     console.error('Send push notification error:', error);
   }
 }
+
 module.exports = configureSocket;

@@ -1,20 +1,26 @@
-// client/src/services/pushNotificationService.js
-
 import { PushNotifications } from '@capacitor/push-notifications';
 import { Capacitor } from '@capacitor/core';
+import { Device } from '@capacitor/device';
 import userService from './userService';
 
 // Store the token locally for reuse
 let currentFCMToken = null;
+let devicePlatform = null;
 
 export const initializePushNotifications = async () => {
-  if (!Capacitor.isNativePlatform()) {
-    console.log('Push notifications are only available on native platforms');
-    return;
-  }
-  
   try {
+    // First check if we're on a native platform
+    if (!Capacitor.isNativePlatform()) {
+      console.log('Push notifications are only available on native platforms');
+      return;
+    }
+    
     console.log('Initializing push notifications...');
+    
+    // Get device info to detect platform
+    const deviceInfo = await Device.getInfo();
+    devicePlatform = deviceInfo.platform;
+    console.log(`Device platform: ${devicePlatform}`);
     
     // Check permissions first
     const permissionStatus = await PushNotifications.checkPermissions();
@@ -36,11 +42,15 @@ export const initializePushNotifications = async () => {
     
     // Registration event
     PushNotifications.addListener('registration', async (token) => {
-      console.log('Push registration success:', token.value);
+      console.log(`Push registration success on ${devicePlatform}:`, token.value);
+      currentFCMToken = token.value;
       
-      // Store token on server
+      // Store token on server with platform info
       try {
-        await userService.storePushToken(token.value);
+        await userService.storePushToken({
+          token: token.value,
+          platform: devicePlatform
+        });
         console.log('Push token stored on server');
       } catch (error) {
         console.error('Failed to store push token on server:', error);
@@ -49,25 +59,34 @@ export const initializePushNotifications = async () => {
     
     // Registration error event
     PushNotifications.addListener('registrationError', (error) => {
-      console.error('Push registration failed:', error);
+      console.error(`Push registration failed on ${devicePlatform}:`, error);
     });
     
     // Notification received in foreground
     PushNotifications.addListener('pushNotificationReceived', (notification) => {
-      console.log('Push notification received in foreground:', notification);
+      console.log(`Push notification received in foreground on ${devicePlatform}:`, notification);
       
-      // Important: When the app is in the foreground, FCM doesn't show notifications
-      // We need to manually create a local notification
-      createLocalNotification(notification);
+      // iOS and Android have slightly different notification structures
+      const formattedNotification = {
+        title: notification.title,
+        body: notification.body,
+        data: notification.data || {}
+      };
+      
+      // Create local notification for foreground state
+      createLocalNotification(formattedNotification);
     });
     
     // Notification action performed (clicked)
     PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-      console.log('Push notification action performed:', action);
+      console.log(`Push notification action performed on ${devicePlatform}:`, action);
+      
+      // Handle notification data structure differences between iOS and Android
+      const notificationData = action.notification.data;
       
       // Handle navigation based on notification data
-      if (action.notification && action.notification.data) {
-        handleNotificationNavigation(action.notification.data);
+      if (notificationData) {
+        handleNotificationNavigation(notificationData);
       }
     });
     

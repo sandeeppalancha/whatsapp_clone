@@ -39,8 +39,13 @@ const changePassword = (passwordData) => {
 /**
  * Store push notification token
  */
-const storePushToken = (token) => {
-  return apiClient.post('/users/push-token', { token });
+const storePushToken = (tokenData) => {
+  // Check if tokenData is a string (backward compatibility) or an object
+  const payload = typeof tokenData === 'string' 
+    ? { token: tokenData } 
+    : tokenData;
+  
+  return apiClient.post('/users/push-token', payload);
 };
 
 /**
