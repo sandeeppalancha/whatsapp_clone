@@ -58,6 +58,10 @@ module.exports = (sequelize, DataTypes) => {
     pushToken: {
       type: DataTypes.STRING,
       allowNull: true
+    },
+    devicePlatform: {
+      type: DataTypes.STRING,
+      allowNull: true
     }
   }, {
     sequelize,

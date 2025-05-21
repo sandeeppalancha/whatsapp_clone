@@ -80,7 +80,7 @@ exports.updateProfile = async (req, res) => {
 exports.storePushToken = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { token } = req.body;
+    const { token, platform } = req.body;  // Now accepting platform in the request
     
     if (!token) {
       return res.status(400).json({
@@ -96,9 +96,15 @@ exports.storePushToken = async (req, res) => {
       });
     }
     
-    // Store token in user model or a separate table
-    // This is just a basic implementation
+    // Store token
     user.pushToken = token;
+    
+    // Store platform if provided
+    if (platform) {
+      user.devicePlatform = platform;
+      console.log(`User ${userId} registered token for ${platform} device`);
+    }
+    
     await user.save();
     
     res.json({
