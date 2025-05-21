@@ -1,5 +1,3 @@
-// server/src/services/firebaseService.js
-
 const admin = require('firebase-admin');
 const fs = require('fs');
 const path = require('path');
@@ -9,7 +7,8 @@ const sentNotifications = new Map();
 const MAX_NOTIFICATIONS_PER_MINUTE = 10;
 const NOTIFICATION_RETENTION_MS = 60 * 1000; // 1 minute
 
-// Initialize Firebase Admin 
+// Firebase Admin instance
+let firebaseApp = null;
 let firebaseInitialized = false;
 
 const initializeFirebase = () => {
@@ -20,33 +19,65 @@ const initializeFirebase = () => {
     const serviceAccountPath = path.join(__dirname, '../../firebase-service-account.json');
     
     if (fs.existsSync(serviceAccountPath)) {
-      const serviceAccount = require(serviceAccountPath);
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
-      });
-      console.log('Firebase initialized with service account file');
-    } 
-    // Fall back to environment variables if file doesn't exist
-    else if (process.env.FIREBASE_PROJECT_ID && 
-             process.env.FIREBASE_CLIENT_EMAIL && 
-             process.env.FIREBASE_PRIVATE_KEY) {
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId: process.env.FIREBASE_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
-        })
-      });
-      console.log('Firebase initialized with environment variables');
+      try {
+        // Read file and validate
+        const fileContent = fs.readFileSync(serviceAccountPath, 'utf8');
+        const serviceAccount = JSON.parse(fileContent);
+        
+        // Initialize with provided credentials
+        if (!firebaseApp) {
+          firebaseApp = admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount)
+          });
+        }
+        
+        console.log('Firebase initialized successfully with service account file');
+        firebaseInitialized = true;
+        return true;
+      } catch (jsonError) {
+        console.error(`Error with service account file: ${jsonError.message}`);
+        
+        // If file exists but has issues, try environment variables instead
+        return initializeFromEnv();
+      }
     } else {
-      console.error('No Firebase credentials found. Push notifications will not work!');
+      console.log('Service account file not found, trying environment variables');
+      return initializeFromEnv();
+    }
+  } catch (error) {
+    console.error(`Firebase initialization error: ${error.message}`);
+    return false;
+  }
+};
+
+// Helper to initialize from environment variables
+const initializeFromEnv = () => {
+  try {
+    if (process.env.FIREBASE_PROJECT_ID && 
+        process.env.FIREBASE_CLIENT_EMAIL && 
+        process.env.FIREBASE_PRIVATE_KEY) {
+      
+      const privateKey = process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n');
+      
+      if (!firebaseApp) {
+        firebaseApp = admin.initializeApp({
+          credential: admin.credential.cert({
+            projectId: process.env.FIREBASE_PROJECT_ID,
+            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+            privateKey: privateKey
+          })
+        });
+      }
+      
+      console.log('Firebase initialized with environment variables');
+      firebaseInitialized = true;
+      return true;
+    } else {
+      console.error('Cannot initialize Firebase - missing environment variables');
       return false;
     }
-    
-    firebaseInitialized = true;
-    return true;
-  } catch (error) {
-    console.error('Firebase initialization error:', error);
+  } catch (envError) {
+    console.error(`Environment variable initialization error: ${envError.message}`);
     return false;
   }
 };
