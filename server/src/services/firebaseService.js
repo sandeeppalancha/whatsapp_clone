@@ -116,7 +116,7 @@ const checkRateLimitAndTrack = (userId) => {
 };
 
 // Send push notification with better handling
-const sendPushNotification = async (userId, token, notification, data = {}) => {
+const sendPushNotification = async (userId, token, notification, data = {}, platform = null) => {
   // Initialize Firebase if not already done
   if (!initializeFirebase()) {
     console.error('Cannot send push notification - Firebase not initialized');
@@ -130,7 +130,10 @@ const sendPushNotification = async (userId, token, notification, data = {}) => {
   }
   
   try {
-    console.log(`Sending push notification to user ${userId}, token: ${token.substring(0, 20)}...`);
+    // Detect if this is an iOS device based on passed platform or token format
+    const isIOS = platform === 'ios' || /^[a-fA-F0-9]{64}$/.test(token);
+    
+    console.log(`Sending push notification to user ${userId}${isIOS ? ' (iOS)' : ' (Android)'}, token: ${token.substring(0, 20)}...`);
     
     // Ensure all data values are strings as required by FCM
     const stringifiedData = Object.keys(data).reduce((result, key) => {
@@ -144,51 +147,67 @@ const sendPushNotification = async (userId, token, notification, data = {}) => {
     // Create a unique message ID for this notification
     const messageId = `msg_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     
-    // Prepare the message with appropriate configuration for Android and iOS
-    const message = {
-      token,
-      notification,
-      data: stringifiedData,
-      android: {
-        priority: 'high',
-        ttl: 86400 * 1000, // 1 day in milliseconds
-        notification: {
-          channelId: 'chat_messages',
-          priority: 'high',
-          defaultSound: true,
-          visibility: 'public'
-        },
-        // Move collapseKey to the android section where it belongs
-        collapseKey: messageId
-      },
-      apns: {
-        headers: {
-          'apns-priority': '10',
-          'apns-collapse-id': messageId // For iOS collapse behavior
-        },
-        payload: {
-          aps: {
-            sound: 'default',
-            badge: 1,
-            contentAvailable: true
-          }
-        }
-      }
-    };
+    // Create a message specific to the platform
+    let message;
     
+    if (isIOS) {
+      // iOS-specific message (simpler configuration to test)
+      message = {
+        token,
+        notification,
+        apns: {
+          payload: {
+            aps: {
+              alert: {
+                title: notification.title,
+                body: notification.body
+              },
+              badge: 1,
+              sound: 'default'
+            }
+          }
+        },
+        data: stringifiedData
+      };
+      
+      console.log('Using iOS-specific message configuration');
+    } else {
+      // Android-specific message
+      message = {
+        token,
+        notification,
+        android: {
+          priority: 'high',
+          notification: {
+            channelId: 'chat_messages',
+            priority: 'high',
+            defaultSound: true,
+            visibility: 'public'
+          }
+        },
+        data: stringifiedData
+      };
+    }
+    
+    // Send the notification
     const response = await admin.messaging().send(message);
     console.log(`Successfully sent notification to user ${userId}`, response);
     return response;
   } catch (error) {
     console.error(`Error sending push notification to user ${userId}:`, error);
     
+    // Handle APNs-specific errors
+    if (error.errorInfo && error.errorInfo.code === 'messaging/third-party-auth-error') {
+      console.error('APNs authentication error. Please check your Apple Developer account and Firebase APNs setup.');
+      
+      // Log token information for debugging
+      console.error(`Token details - Length: ${token.length}, Format: ${/^[a-fA-F0-9]{64}$/.test(token) ? 'APNs format' : 'FCM format'}`);
+    }
+    
     // Handle invalid token errors
     if (error.code === 'messaging/invalid-registration-token' || 
         error.code === 'messaging/registration-token-not-registered') {
       console.error(`Invalid FCM token for user ${userId} - should be removed from database`);
-      
-      // Here you could call a function to remove the invalid token
-      // await removeInvalidToken(userId);
     }
     
     return false;
