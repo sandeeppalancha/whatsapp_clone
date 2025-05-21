@@ -7,6 +7,60 @@ import userService from './userService';
 let currentFCMToken = null;
 let devicePlatform = null;
 
+const checkForExistingToken = async () => {
+  if (!Capacitor.isNativePlatform()) return null;
+  
+  try {
+    console.log('Checking for existing FCM token...');
+    
+    // For iOS, trigger a manual token check if available
+    // This is a no-op if the message handler doesn't exist
+    if (devicePlatform === 'ios' && 
+        window.webkit && 
+        window.webkit.messageHandlers && 
+        window.webkit.messageHandlers.checkFCMToken) {
+      try {
+        window.webkit.messageHandlers.checkFCMToken.postMessage({});
+        console.log('Requested token check from native iOS code');
+      } catch (e) {
+        console.log('Native message handler not available:', e);
+      }
+    }
+  } catch (error) {
+    console.error('Error checking for existing token:', error);
+    return null;
+  }
+};
+
+const setupNativeBridgeListeners = () => {
+  // Prevent duplicate event listeners
+  window.removeEventListener('FCMToken', onFCMTokenReceived);
+  
+  // Listen for direct FCM token events from native iOS bridge
+  window.addEventListener('FCMToken', onFCMTokenReceived);
+  
+  console.log('Native bridge listeners set up');
+};
+
+// Separate handler function to avoid duplicating code
+function onFCMTokenReceived(event) {
+  if (event.detail && event.detail.token) {
+    console.log('Received FCM token from native bridge:', event.detail.token);
+    
+    // Store token on server with iOS platform info
+    userService.storePushToken({
+      token: event.detail.token,
+      platform: devicePlatform || 'ios' // Fallback to ios if not set
+    }).then(() => {
+      console.log('Successfully stored token from native bridge');
+      // Update the global token variable for reuse
+      currentFCMToken = event.detail.token;
+    }).catch(error => {
+      console.error('Failed to store token from native bridge:', error);
+    });
+  }
+}
+
 export const initializePushNotifications = async () => {
   try {
     // First check if we're on a native platform
@@ -21,6 +75,9 @@ export const initializePushNotifications = async () => {
     const deviceInfo = await Device.getInfo();
     devicePlatform = deviceInfo.platform;
     console.log(`Device platform: ${devicePlatform}`);
+    
+    // Set up platform-specific listeners early
+    setupNativeBridgeListeners();
     
     // Check permissions first
     const permissionStatus = await PushNotifications.checkPermissions();
@@ -94,6 +151,11 @@ export const initializePushNotifications = async () => {
     console.log('Registering push notifications...');
     await PushNotifications.register();
     console.log('Push notifications registered');
+
+    // Check for existing token as a fallback (especially for iOS)
+    if (devicePlatform === 'ios') {
+      await checkForExistingToken();
+    }
     
   } catch (error) {
     console.error('Push notification initialization error:', error);
@@ -102,6 +164,8 @@ export const initializePushNotifications = async () => {
 
 // Show local notification for foreground state
 const createLocalNotification = async (notification) => {
+  console.log("createLocalNotification");
+  
   if (!notification) return;
   
   try {
@@ -130,6 +194,7 @@ const createLocalNotification = async (notification) => {
     console.error('Error creating local notification:', error);
   }
 };
+
 // Handle notification click action
 export const handleNotificationNavigation = (data) => {
   if (!data) return;
@@ -170,12 +235,15 @@ export const refreshFCMToken = async () => {
     // Wait for token from the registration listener
     return new Promise((resolve) => {
       const tokenListener = PushNotifications.addListener('registration', async (token) => {
-        console.log('Refreshed FCM token:', token.value);
+        console.log(`Refreshed FCM token on ${devicePlatform}:`, token.value);
         currentFCMToken = token.value;
         
-        // Update on server
+        // Update on server with platform info (fixed to include platform)
         try {
-          await userService.storePushToken(token.value);
+          await userService.storePushToken({
+            token: token.value,
+            platform: devicePlatform
+          });
           console.log('Refreshed token stored on server');
         } catch (err) {
           console.error('Failed to store refreshed token:', err);
